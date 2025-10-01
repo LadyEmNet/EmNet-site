@@ -91,6 +91,13 @@ body {
   color: #000;
 }
 
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 /* Sections */
 .section {
   padding: 56px 0;

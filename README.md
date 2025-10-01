@@ -1,28 +1,37 @@
 # EmNet static site (dark theme)
 
-Free, GitHub Pages–hosted static website with a black base, grey sections, and neon pink accents to match your EmNet logo.
+A lightweight, single-folder site for EmNet Community Management Limited. All pages share a dark palette with neon pink accents that match the EmNet logo.
 
+## Pages & assets
+- `index.html` – homepage with hero, services overview, and contact call-to-action.
+- `about.html` – background on EmNet's approach to operational community growth.
+- `how-we-work.html` – breakdown of the audit, implement, sustain process with a next-step CTA.
+- `styles/main.css` – shared styling for layout, typography, and components.
+- `assets/` – logos, favicons, and the `og-image.png` used for social cards.
 
-## Replace assets
-1. Put your logo file at `public/assets/logo.png` (PNG or SVG works).
-2. Update the favicon at `public/assets/favicon.png`.
+## Update copy or visuals
+1. Replace the logo at `assets/logo.png` (PNG or SVG).
+2. Update the favicon at `assets/favicon.png`.
+3. Swap the social preview image at `assets/og-image.png` if you have a different share card.
+4. Edit page copy directly in the relevant HTML file. Each page already includes SEO, Open Graph, and Twitter card metadata.
 
 ## Publish on GitHub Pages
-1. Create a public GitHub repo (e.g. `emnet-site`).
-2. Upload these files to the `main` branch.
-3. Settings → Pages → Build and deployment → Source → **GitHub Actions**. Accept the suggested workflow, then edit the `upload-pages-artifact` step so that `path: public`.
-4. Commit the workflow file. On the next push your site will appear at `https://<username>.github.io/emnet-site/`.
+1. Create a public GitHub repository (for example, `emnet-site`).
+2. Upload all files from this directory to the `main` branch.
+3. In the repository, go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. Accept the suggested workflow.
+4. In the generated workflow file, set `upload-pages-artifact` → `path: .` so the action publishes the repository root.
+5. Commit the workflow file. The next push will deploy the site at `https://<username>.github.io/<repository>/`.
 
-## Custom domain
-1. Create a `CNAME` file in the repo root containing just your domain, e.g.:
+## Custom domain (optional)
+1. Add a `CNAME` file in the repo root containing your domain, for example:
    ```
    emnet.example
    ```
-2. In Squarespace DNS:
+2. In your DNS provider, create records:
    - `www` CNAME → `<username>.github.io.`
    - A records for `@` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
-3. Enable HTTPS in GitHub Pages once the certificate is ready.
+3. Once DNS has propagated, enable HTTPS in GitHub Pages settings.
 
 ## Notes
-- Edit copy in `public/index.html`. Styling is in `public/styles/main.css`.
-- Buttons and links use neon pink (#ff2ebd). Adjust if you prefer a different accent.
+- Buttons and links use neon pink (`#ff2ebd`). Adjust `styles/main.css` if you want a different accent colour.
+- All pages share a footer script that keeps the copyright year current.
