@@ -3,11 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>About EmNet Community Management Ltd</title>
-  <meta name="description" content="Learn how EmNet Community Management Ltd builds sustainable, high-trust online communities.">
-  <meta property="og:title" content="About EmNet Community Management Ltd">
-  <meta property="og:description" content="Learn how EmNet Community Management Ltd builds sustainable, high-trust online communities.">
+  <title>About EmNet | EmNet Community Management Limited.</title>
+  <meta name="description" content="Discover the team, philosophy, and operational principles behind EmNet Community Management Limited.">
+  <meta property="og:title" content="About EmNet | EmNet Community Management Limited.">
+  <meta property="og:description" content="Discover the team, philosophy, and operational principles behind EmNet Community Management Limited.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="EmNet Community Management Limited">
+  <meta property="og:image" content="assets/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="About EmNet | EmNet Community Management Limited.">
+  <meta name="twitter:description" content="Discover the team, philosophy, and operational principles behind EmNet Community Management Limited.">
+  <meta name="twitter:image" content="assets/og-image.png">
   <link rel="icon" href="assets/favicon.png">
   <link rel="stylesheet" href="styles/main.css">
 </head>
@@ -19,6 +25,7 @@
         <a href="index.html">Home</a>
         <a href="about.html" aria-current="page">About</a>
         <a href="index.html#services">Services</a>
+        <a href="how-we-work.html">How we work</a>
         <a href="index.html#contact">Contact</a>
       </nav>
     </div>
@@ -51,9 +58,17 @@
 
   <footer class="site-footer">
     <div class="container">
-      <small>© <span id="y"></span> EmNet Community Management Ltd</small>
+      <small>© <span class="js-current-year"></span> EmNet Community Management Limited</small>
+      <small>Company No. 13716390</small>
+      <small>Registrar of Companies for England and Wales</small>
+      <small>Email: <a href="mailto:Emnet@emnetcm.com">Emnet@emnetcm.com</a></small>
+      <small>Telegram: <a href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a></small>
     </div>
   </footer>
-  <script>document.getElementById('y').textContent = new Date().getFullYear()</script>
+  <script>
+    document.querySelectorAll('.js-current-year').forEach(function (el) {
+      el.textContent = new Date().getFullYear();
+    });
+  </script>
 </body>
 </html>
