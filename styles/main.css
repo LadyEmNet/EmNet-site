@@ -63,6 +63,10 @@ body {
   height: auto;
 }
 
+body.about-page .hero-logo {
+  width: min(130px, 35vw);
+}
+
 .hero h1 {
   font-size: 40px;
   margin: 0 0 10px;
