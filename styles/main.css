@@ -107,6 +107,59 @@ body {
   color: #ff2ebd; /* neon pink section headers */
 }
 
+.workflow-section {
+  --workflow-bg: none;
+  position: relative;
+  padding: 140px 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.workflow-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--workflow-bg) center / cover no-repeat;
+  z-index: 0;
+}
+
+.workflow-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.75) 100%);
+  z-index: 0;
+}
+
+.workflow-section + .workflow-section {
+  margin-top: 0;
+}
+
+.workflow-content {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+}
+
+.workflow-content p {
+  color: #e2e2e2;
+}
+
+.workflow-section--audit {
+  --workflow-bg: url('../assets/audit.png');
+}
+
+.workflow-section--implement {
+  --workflow-bg: url('../assets/implement.png');
+}
+
+.workflow-section--sustain {
+  --workflow-bg: url('../assets/sustain.png');
+}
+
 .cards {
   list-style: none;
   padding: 0;
@@ -151,5 +204,9 @@ body {
 
   .hero h1 {
     font-size: 32px;
+  }
+
+  .workflow-section {
+    padding: 100px 0;
   }
 }
