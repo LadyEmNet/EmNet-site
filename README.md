@@ -1,32 +1,51 @@
-# EmNet static site (dark theme)
+# EmNet Website
 
-Free, GitHub Pages–hosted static website with a black base, grey sections, and neon pink accents to match your EmNet logo.
+A responsive single-page marketing site for EmNet featuring a dark theme with neon pink accents.
 
-## Project structure
-- `public/index.html` – page markup.
-- `public/styles/main.css` – styling.
-- `public/assets/` – favicon, logo, and other static files.
+## Features
+- Accessible, responsive layout optimized for desktop and mobile.
+- Dark-themed color palette with neon accent highlights.
+- Sections for hero messaging, services, testimonials, and contact information.
+- Modular CSS structure for easy customization.
 
-## Replace assets
-1. Put your logo file at `public/assets/logo.png` (PNG or SVG works).
-2. Update the favicon at `public/assets/favicon.png`.
+## Project Structure
+```
+├── assets/
+│   ├── favicon.png
+│   └── logo.png
+├── index.html
+├── styles/
+│   └── main.css
+└── README.md
+```
+- **index.html** – Main HTML document for the landing page.
+- **styles/main.css** – Global styling and theming rules.
+- **assets/** – Static images and icons used throughout the site.
 
-## Publish on GitHub Pages
-1. Create a public GitHub repo (e.g. `emnet-site`).
-2. Upload these files to the `main` branch.
-3. Settings → Pages → Build and deployment → Source → **GitHub Actions**. Accept the suggested workflow, then edit the `upload-pages-artifact` step so that `path: public`.
-4. Commit the workflow file. On the next push your site will appear at `https://<username>.github.io/emnet-site/`.
-
-## Custom domain
-1. Create a `CNAME` file in the repo root containing just your domain, e.g.:
+## Getting Started
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/<your-username>/EmNet-site.git
+   cd EmNet-site
    ```
-   emnet.example
+2. Open `index.html` directly in your browser or use a local development server:
+   ```bash
+   npx serve .
    ```
-2. In Squarespace DNS:
-   - `www` CNAME → `<username>.github.io.`
-   - A records for `@` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
-3. Enable HTTPS in GitHub Pages once the certificate is ready.
+3. Edit the HTML and CSS files to customize content, colors, or layout.
 
-## Notes
-- Edit copy in `public/index.html`. Styling is in `public/styles/main.css`.
-- Buttons and links use neon pink (#ff2ebd). Adjust if you prefer a different accent.
+## Customization
+- Update text and sections in `index.html`.
+- Adjust colors, typography, and spacing in `styles/main.css`.
+- Replace `assets/logo.png` and `assets/favicon.png` with your brand assets.
+
+## Deployment
+You can host the site on any static hosting service (e.g., GitHub Pages, Netlify, Vercel).
+
+### GitHub Pages
+1. Push the repository to GitHub.
+2. In the repository settings, enable **GitHub Pages** and select the `main` branch.
+3. Your site will be published at `https://<username>.github.io/<repository>/`.
+
+## License
+Add your preferred license in a `LICENSE` file if you plan to distribute or open-source the project.
