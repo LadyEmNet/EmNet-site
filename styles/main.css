@@ -115,6 +115,11 @@ body.about-page .hero-logo {
   color: #000;
 }
 
+.btn:focus-visible {
+  outline: 2px solid #ff2ebd;
+  outline-offset: 3px;
+}
+
 .cta-actions {
   display: flex;
   flex-wrap: wrap;
@@ -136,6 +141,143 @@ body.about-page .hero-logo {
 
 .section h2 {
   color: #ff2ebd; /* neon pink section headers */
+}
+
+.section p {
+  color: #d0d0d0;
+}
+
+.trust-strip {
+  background: #0d0d0d;
+  border-block: 1px solid #222;
+}
+
+.trust-strip h2 {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.trust-metrics {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trust-metric {
+  padding: 24px;
+  border: 1px solid #222;
+  border-radius: 16px;
+  background: #151515;
+}
+
+.trust-metric-heading {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #e4e4e4;
+}
+
+.metric-number {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #a8a8a8;
+  transition: color 0.3s ease;
+}
+
+.metric-number.is-active {
+  color: #ff2ebd;
+}
+
+.metric-detail {
+  margin: 0;
+  color: #bdbdbd;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ais-heading {
+  color: #cccccc;
+  transition: color 0.3s ease;
+}
+
+.ais-heading.is-active {
+  color: #ff2ebd;
+}
+
+.ais-bridge {
+  margin-top: 32px;
+  padding: 24px;
+  border: 1px solid #222;
+  border-radius: 16px;
+  background: #151515;
+}
+
+.ais-bridge h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.ais-bridge p {
+  margin: 0;
+  color: #dcdcdc;
+}
+
+.cta-mid {
+  background: linear-gradient(90deg, rgba(255, 46, 189, 0.15) 0%, rgba(0, 0, 0, 0.75) 100%);
+  text-align: center;
+}
+
+.cta-mid h2 {
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.cta-mid p {
+  margin: 0 auto;
+  max-width: 520px;
+}
+
+.final-cta {
+  text-align: center;
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 24px;
+  padding: 48px 24px;
+}
+
+.final-cta h2 {
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.final-cta p {
+  margin: 0 auto;
+  max-width: 520px;
+}
+
+.individual-services ul {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.individual-services li {
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  background: #1a1a1a;
+  color: #dddddd;
+}
+
+.individual-services li strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff2ebd;
 }
 
 .workflow-section {
@@ -264,5 +406,16 @@ body.about-page .hero-logo {
 
   .workflow-section {
     padding: 100px 0;
+  }
+
+  .final-cta {
+    padding: 40px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-number,
+  .ais-heading {
+    transition: none;
   }
 }
