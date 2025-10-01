@@ -56,6 +56,13 @@ body {
   text-align: center;
 }
 
+.hero-logo {
+  display: block;
+  margin: 0 auto 32px;
+  width: min(260px, 70vw);
+  height: auto;
+}
+
 .hero h1 {
   font-size: 40px;
   margin: 0 0 10px;
@@ -128,6 +135,11 @@ body {
 @media (max-width: 640px) {
   .hero {
     padding: 56px 0;
+  }
+
+  .hero-logo {
+    margin-bottom: 24px;
+    width: min(200px, 80vw);
   }
 
   .hero h1 {
