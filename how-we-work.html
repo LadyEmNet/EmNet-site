@@ -26,7 +26,7 @@
         <a href="about.html">About</a>
         <a href="index.html#services">Services</a>
         <a href="how-we-work.html" aria-current="page">How we work</a>
-        <a href="index.html#contact">Contact</a>
+        <a href="#contact">Contact</a>
       </nav>
     </div>
   </header>
@@ -45,8 +45,14 @@
           </ul>
           <p>Either path gives you practical operations that are accountable, measurable, and resilient.</p>
         </div>
+        <div class="ais-bridge" id="ais">
+          <h2>AIS</h2>
+          <p>AIS is our full framework: Audit, Implement, Sustain. It starts with a hands-on review, then structured improvements and long-term stability.</p>
+        </div>
       </div>
     </section>
+
+    <img src="assets/divider.png" alt="" class="section-divider" aria-hidden="true">
 
     <section class="section workflow-section workflow-section--audit" id="audit">
       <div class="container workflow-content">
@@ -57,7 +63,7 @@
           <span aria-hidden="true">&gt;</span>
           <a href="#sustain">Sustain</a>
         </nav>
-        <h2>Audit</h2>
+        <h2 class="ais-heading">Audit</h2>
         <p><strong>Purpose:</strong> Experience your community as a member would, then map the systems behind it.</p>
         <h3>What we do</h3>
         <ul>
@@ -83,7 +89,7 @@
 
     <section class="section workflow-section workflow-section--implement" id="implement">
       <div class="container workflow-content">
-        <h2>Implement</h2>
+        <h2 class="ais-heading">Implement</h2>
         <p><strong>Purpose:</strong> Deploy processes, automation, and playbooks that stabilise your community.</p>
         <h3>What we do</h3>
         <ul>
@@ -108,7 +114,7 @@
 
     <section class="section workflow-section workflow-section--sustain" id="sustain">
       <div class="container workflow-content">
-        <h2>Sustain</h2>
+        <h2 class="ais-heading">Sustain</h2>
         <p><strong>Purpose:</strong> Keep systems running smoothly and evolving with the community.</p>
         <h3>What we do</h3>
         <ul>
@@ -132,24 +138,23 @@
 
     <img src="assets/divider.png" alt="" class="section-divider" aria-hidden="true">
 
-    <section class="container section">
-      <h2>Additional services</h2>
-      <p>Alongside AIS and individual stages, EmNet also offers:</p>
+    <section class="container section individual-services">
+      <h2>Individual services</h2>
       <ul>
-        <li><strong>Custom bot builds</strong> — developed to order for your specific needs.</li>
-        <li><strong>Bluesky analytics reports</strong> — provide a username and timeframe for a quick, clear engagement report.</li>
-        <li><strong>Standard moderation</strong> — professional coverage at a reasonable rate.</li>
+        <li><strong>Custom bot builds</strong> — built to order for your needs</li>
+        <li><strong>Bluesky analytics reports</strong> — send a username and timeframe for a clear engagement report</li>
+        <li><strong>Standard moderation</strong> — reliable coverage at a reasonable rate</li>
       </ul>
     </section>
 
     <img src="assets/divider.png" alt="" class="section-divider" aria-hidden="true">
 
-    <section class="container section">
+    <section id="contact" class="container section final-cta">
       <h2>Next step</h2>
-      <p>Ready to strengthen your community operations? Reach out and we will map the next actionable step together.</p>
+      <p>Tell us what is not working in your channels. We will map the fastest fix.</p>
       <div class="cta-actions">
         <a class="btn" href="mailto:Emnet@emnetcm.com">Email EmNet</a>
-        <a class="btn" href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a>
+        <a class="btn" href="https://t.me/millieme85" target="_blank" rel="noopener">Telegram: EmnetCm</a>
       </div>
     </section>
   </main>
@@ -163,6 +168,7 @@
       <small>Telegram: <a href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a></small>
     </div>
   </footer>
+  <script src="assets/site.js" defer></script>
   <script>
     document.querySelectorAll('.js-current-year').forEach(function (el) {
       el.textContent = new Date().getFullYear();
