@@ -2,10 +2,6 @@
 
 Free, GitHub Pages–hosted static website with a black base, grey sections, and neon pink accents to match your EmNet logo.
 
-## Project structure
-- `public/index.html` – page markup.
-- `public/styles/main.css` – styling.
-- `public/assets/` – favicon, logo, and other static files.
 
 ## Replace assets
 1. Put your logo file at `public/assets/logo.png` (PNG or SVG works).
