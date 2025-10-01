@@ -148,6 +148,29 @@ body {
   color: #e2e2e2;
 }
 
+.workflow-shortcuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  font-weight: 600;
+  color: #bbbbbb;
+}
+
+.workflow-shortcuts a {
+  color: #ff2ebd;
+  text-decoration: none;
+}
+
+.workflow-shortcuts a:hover,
+.workflow-shortcuts a:focus-visible {
+  text-decoration: underline;
+}
+
+.workflow-shortcuts span {
+  color: #666666;
+}
+
 .workflow-section--audit {
   --workflow-bg: url('../assets/audit.png');
 }
