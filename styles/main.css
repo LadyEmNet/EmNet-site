@@ -76,6 +76,26 @@ body {
   color: #bbbbbb;
 }
 
+.hero-strapline {
+  margin-bottom: 40px;
+}
+
+.hero-intro p:last-of-type {
+  margin-bottom: 0;
+}
+
+.hero ul {
+  display: inline-block;
+  margin: 0 auto 20px;
+  padding-left: 20px;
+  text-align: left;
+  color: #bbbbbb;
+}
+
+.hero ul li {
+  margin-bottom: 8px;
+}
+
 .btn {
   display: inline-block;
   padding: 10px 16px;
@@ -149,12 +169,14 @@ body {
 }
 
 .workflow-shortcuts {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  margin: 16px 0;
+  margin: 32px auto;
   font-weight: 600;
   color: #bbbbbb;
+  width: fit-content;
 }
 
 .workflow-shortcuts a {
