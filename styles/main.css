@@ -118,6 +118,14 @@ body {
   margin-top: 16px;
 }
 
+.section-divider {
+  display: block;
+  width: 200px;
+  max-width: 60%;
+  margin: 32px auto;
+  height: auto;
+}
+
 /* Sections */
 .section {
   padding: 56px 0;
