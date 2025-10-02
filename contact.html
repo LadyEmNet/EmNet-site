@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Contact EmNet | EmNet Community Management Limited.</title>
   <meta name="description" content="Community operations for blockchain communities across Algorand and beyond, delivering Telegram bots, automation, and analytics that keep ecosystems thriving.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self' mailto:; frame-ancestors 'none'; img-src 'self' data: https://www.emnetcm.com; manifest-src 'self'; object-src 'none'; script-src 'self' 'sha256-DGqo2Kb4k72J1TxKVIARDY7Dyoc1OXsNQ22Wn1p5oMU='; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self' https://formsubmit.co; frame-ancestors 'none'; img-src 'self' data: https://www.emnetcm.com; manifest-src 'self'; object-src 'none'; script-src 'self' 'sha256-DGqo2Kb4k72J1TxKVIARDY7Dyoc1OXsNQ22Wn1p5oMU='; style-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="keywords" content="contact EmNet, Web3 community management contact, EmNet email, EmNet Twitter">
   <meta name="author" content="EmNet Community Management Limited">
@@ -106,7 +106,7 @@
           <p class="contact-details__note">Business hours: Monday to Friday, 9am – 6pm (UTC). We aim to reply within one working day.</p>
         </div>
 
-        <form class="contact-form js-contact-form" action="mailto:emnet@emnetcm.com" method="post" enctype="text/plain" novalidate>
+        <form class="contact-form js-contact-form" id="contact-form" action="https://formsubmit.co/emnet@emnetcm.com" method="POST" novalidate>
           <h2>Send us a message</h2>
           <p class="contact-form__intro">Complete the form and we&rsquo;ll get back to you shortly.</p>
           <div class="contact-form__field">
@@ -133,6 +133,10 @@
           <div class="contact-form__actions">
             <button type="submit" class="contact-form__submit">Send message</button>
           </div>
+          <input type="hidden" name="_subject" value="[EmNet Site] New enquiry">
+          <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off" style="position:absolute;left:-10000px" aria-hidden="true">
           <p class="contact-form__privacy">We only use your details to respond to your enquiry. Read our <a href="privacy.html">Privacy Policy</a>.</p>
           <p class="contact-form__confirmation js-contact-confirmation" hidden role="status" aria-live="polite">Thank you, we&rsquo;ll be in touch shortly.</p>
         </form>
@@ -146,14 +150,12 @@
         <small>© <span class="js-current-year"></span> EmNet Community Management Limited</small>
         <small>Company No. 13716390</small>
         <small>Registrar of Companies for England and Wales</small>
-        <small>Email: <a href="mailto:Emnet@emnetcm.com">Emnet@emnetcm.com</a></small>
-        <small>Telegram: <a href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a></small>
         <small><a href="privacy.html">Privacy Policy</a></small>
         <small>Proudly aligned with the Algorand ecosystem.</small>
       </div>
       <ul class="footer-social" aria-label="Contact and social links">
         <li><a href="mailto:Emnet@emnetcm.com">✉️</a></li>
-        <li><a href="https://x.com/EmnetCm" target="_blank" rel="noopener"><img src="assets/xlogo.png" alt="X" width="166" height="137" loading="lazy" decoding="async"></a></li>
+        <li><a href="https://x.com/EmilyConway85" target="_blank" rel="noopener"><img src="assets/xlogo.png" alt="X" width="166" height="137" loading="lazy" decoding="async"></a></li>
         <li><a href="https://t.me/millieme85" target="_blank" rel="noopener"><img src="assets/tglogo.png" alt="Telegram" width="132" height="132" loading="lazy" decoding="async"></a></li>
       </ul>
     </div>
