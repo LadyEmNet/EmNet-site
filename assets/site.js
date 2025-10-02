@@ -93,7 +93,7 @@
 
 (function () {
   const form = document.querySelector('.js-contact-form');
-  if (!form) {
+  if (!form || typeof window.fetch !== 'function') {
     return;
   }
 
@@ -170,18 +170,28 @@
     const email = getValue('email') || 'N/A';
     const subject = getValue('subject') || 'General enquiry';
 
+    const endpoint = form.dataset.formsubmitEndpoint || form.action;
+
     try {
       formData.set('name', name);
       formData.set('email', email);
       formData.set('subject', subject);
       formData.set('message', message);
 
-      const response = await fetch(form.action, {
+      const payload = {};
+      formData.forEach((value, key) => {
+        if (typeof value === 'string') {
+          payload[key] = value;
+        }
+      });
+
+      const response = await fetch(endpoint, {
         method: form.method || 'POST',
         headers: {
           Accept: 'application/json',
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
