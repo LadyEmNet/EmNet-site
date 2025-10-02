@@ -1014,12 +1014,14 @@ body.about-page .hero-logo {
   display: grid;
   gap: 6px;
   justify-items: center;
+  text-align: center;
 }
 
 .footer-social {
   list-style: none;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   padding: 0;
   margin: 0;
@@ -1046,6 +1048,28 @@ body.about-page .hero-logo {
   display: block;
   width: 1.5em;
   height: auto;
+}
+
+@media (min-width: 768px) {
+  .site-footer {
+    text-align: right;
+  }
+
+  .footer-inner {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: 32px;
+  }
+
+  .footer-meta {
+    justify-items: end;
+    text-align: right;
+  }
+
+  .footer-social {
+    justify-content: flex-end;
+  }
 }
 
 /* Cookie banner */
