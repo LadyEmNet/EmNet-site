@@ -146,16 +146,18 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.65) 100%);
+  z-index: 0;
 }
 
 .hero-banner-content {
-  position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: 40px 20px;
+  position: absolute;
+  z-index: 1;
 }
 
 .hero-banner-content .container {
@@ -176,12 +178,14 @@ body {
 }
 
 .hero-about .btn {
-  border-color: #ffffff;
-  color: #ffffff;
+  background: #ff2ebd;
+  border-color: #ff2ebd;
+  color: #000000;
 }
 
 .hero-about .btn:hover {
-  background: #ffffff;
+  background: #ff5bd0;
+  border-color: #ff5bd0;
   color: #000000;
 }
 
