@@ -124,6 +124,67 @@ body {
   text-align: center;
 }
 
+.hero-about {
+  padding: 0;
+  background: transparent;
+}
+
+.hero-banner {
+  position: relative;
+  width: 100%;
+}
+
+.hero-banner-image {
+  display: block;
+  width: 100%;
+  height: clamp(280px, 45vw, 520px);
+  object-fit: cover;
+}
+
+.hero-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.65) 100%);
+}
+
+.hero-banner-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.hero-banner-content .container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.hero-about h1 {
+  font-size: clamp(42px, 5vw, 64px);
+  margin-bottom: 0;
+}
+
+.hero-about p {
+  max-width: 760px;
+  color: #e5e5e5;
+}
+
+.hero-about .btn {
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.hero-about .btn:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
 .hero-logo {
   display: block;
   margin: 0 auto 32px;
