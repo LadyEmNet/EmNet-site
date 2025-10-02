@@ -801,6 +801,26 @@ body.about-page .hero-logo {
   color: #ff5bd0;
 }
 
+.contact-form__error {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(229, 57, 53, 0.16);
+  border: 1px solid rgba(229, 57, 53, 0.35);
+  color: #ffd3d0;
+  font-weight: 600;
+}
+
+.contact-form__error a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.contact-form__error a:hover,
+.contact-form__error a:focus-visible {
+  color: #ffe4e1;
+}
+
 .contact-form__confirmation {
   margin: 0;
   padding: 14px 16px;
@@ -809,6 +829,14 @@ body.about-page .hero-logo {
   border: 1px solid rgba(52, 168, 83, 0.35);
   color: #c6f9d7;
   font-weight: 600;
+}
+
+.contact-form__honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
 }
 
 .individual-services ul {
