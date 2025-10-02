@@ -92,6 +92,82 @@
 })();
 
 (function () {
+  const form = document.querySelector('.js-contact-form');
+  if (!form) {
+    return;
+  }
+
+  const confirmation = form.querySelector('.js-contact-confirmation');
+  const messageInput = form.querySelector('textarea[name="message"]');
+  const subjectSelect = form.querySelector('select[name="subject"]');
+
+  form.addEventListener('input', (event) => {
+    if (confirmation && !confirmation.hidden) {
+      confirmation.hidden = true;
+    }
+
+    if (event.target === messageInput && messageInput) {
+      messageInput.setCustomValidity('');
+    }
+  });
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    if (messageInput) {
+      messageInput.setCustomValidity('');
+    }
+
+    if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+      return;
+    }
+
+    const formData = new FormData(form);
+    const getValue = (name) => {
+      const value = formData.get(name);
+      return typeof value === 'string' ? value.trim() : '';
+    };
+
+    const message = getValue('message');
+    if (messageInput && message.length < 10) {
+      messageInput.setCustomValidity('Message must be at least 10 characters long.');
+      messageInput.reportValidity();
+      return;
+    }
+
+    const name = getValue('name') || 'N/A';
+    const email = getValue('email') || 'N/A';
+    const subject = getValue('subject') || 'General enquiry';
+
+    const emailSubject = `Website contact: ${subject}`;
+    const bodyLines = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      `Subject: ${subject}`,
+      '',
+      message,
+    ];
+
+    const mailtoLink = `mailto:emnet@emnetcm.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+
+    try {
+      window.location.href = mailtoLink;
+    } catch (error) {
+      // Ignore navigation errors.
+    }
+
+    if (confirmation) {
+      confirmation.hidden = false;
+    }
+
+    form.reset();
+    if (subjectSelect) {
+      subjectSelect.value = 'General enquiry';
+    }
+  });
+})();
+
+(function () {
   if (!('IntersectionObserver' in window)) {
     return;
   }

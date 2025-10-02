@@ -87,7 +87,7 @@
         <a href="about.html">About</a>
         <a href="services.html">Services</a>
         <a href="how-we-work.html" aria-current="page">How we work</a>
-        <a href="#contact">Contact</a>
+        <a href="contact.html">Contact</a>
       </nav>
     </div>
   </header>
@@ -243,7 +243,10 @@
   <div class="cookie-banner js-cookie-banner" role="region" aria-label="Cookie consent">
     <div class="container cookie-banner__inner">
       <p class="cookie-banner__message">We use cookies to improve your experience. By continuing you accept our <a href="privacy.html">Privacy Policy</a>.</p>
-      <button type="button" class="cookie-banner__button js-cookie-accept">Accept</button>
+      <div class="cookie-banner__actions" role="group" aria-label="Cookie choices">
+        <a class="cookie-banner__button cookie-banner__button--secondary js-cookie-decline" href="privacy.html">Decline</a>
+        <button type="button" class="cookie-banner__button cookie-banner__button--primary js-cookie-accept">Accept</button>
+      </div>
     </div>
   </div>
   <script src="assets/site.js" defer></script>
