@@ -132,7 +132,7 @@ body {
 }
 
 body.about-page .hero-logo {
-  width: min(130px, 35vw);
+  width: min(420px, 90vw);
 }
 
 .hero h1 {
@@ -214,6 +214,14 @@ body.about-page .hero-logo {
 
 .section p {
   color: #d0d0d0;
+}
+
+.founder-signature {
+  display: block;
+  margin: 24px 0 0;
+  max-width: 220px;
+  width: 100%;
+  height: auto;
 }
 
 .trust-strip {
