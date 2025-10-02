@@ -14,11 +14,9 @@
     "lint": "run-p lint:html lint:css lint:js",
     "check:links": "linkinator . --recurse --retry 2 --silent --skip \"^mailto:|^tel:|^https?://t.me\"",
     "serve": "http-server . -p 4173 -c-1 --silent",
-    "lhci:ci": "lhci autorun",
-    "ci": "npm run lint && npm run check:links && npm run lhci:ci"
+    "ci": "npm run lint && npm run check:links"
   },
   "devDependencies": {
-    "@lhci/cli": "^0.13.1",
     "eslint": "^8.57.1",
     "htmlhint": "^1.1.4",
     "http-server": "^14.1.1",

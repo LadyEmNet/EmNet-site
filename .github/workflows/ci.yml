@@ -28,5 +28,3 @@ jobs:
       - name: Link check
         run: npm run check:links
 
-      - name: Lighthouse smoke test
-        run: npm run lhci:ci

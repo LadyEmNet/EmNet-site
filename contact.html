@@ -76,7 +76,7 @@
     <section class="hero hero-contact">
       <div class="container hero-contact__inner">
         <h1>Contact EmNet</h1>
-        <p>Reach out for community operations, automation, or support. We respond to every enquiry.</p>
+        <p>Tell us what you need for community operations, automation, or support and we&rsquo;ll reply with a plan.</p>
         <div class="contact-hero-actions">
           <a class="btn" href="mailto:emnet@emnetcm.com">Email EmNet</a>
           <a class="btn" href="https://x.com/EmilyConway85" target="_blank" rel="noopener">Twitter: @EmilyConway85</a>
@@ -88,7 +88,7 @@
       <div class="contact-layout">
         <div class="contact-details" aria-labelledby="contact-details-title">
           <h2 id="contact-details-title">Direct contact</h2>
-          <p>Prefer a direct channel? Use any of the details below and we&rsquo;ll reply promptly.</p>
+          <p>Prefer a direct channel? Choose any of the options below and we&rsquo;ll respond within one working day.</p>
           <ul class="contact-details__list">
             <li>
               <span class="contact-details__label">Email</span>
@@ -136,8 +136,9 @@
           <input type="hidden" name="_subject" value="[EmNet Site] New enquiry">
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="false">
-          <input type="text" name="_honey" tabindex="-1" autocomplete="off" style="position:absolute;left:-10000px" aria-hidden="true">
+          <input type="text" name="_honey" tabindex="-1" autocomplete="off" class="contact-form__honeypot" aria-hidden="true">
           <p class="contact-form__privacy">We only use your details to respond to your enquiry. Read our <a href="privacy.html">Privacy Policy</a>.</p>
+          <p class="contact-form__error js-contact-error" hidden role="alert" aria-live="assertive">We couldn&rsquo;t send your message just now. Please try again or email <a href="mailto:emnet@emnetcm.com">emnet@emnetcm.com</a>.</p>
           <p class="contact-form__confirmation js-contact-confirmation" hidden role="status" aria-live="polite">Thank you, we&rsquo;ll be in touch shortly.</p>
         </form>
       </div>

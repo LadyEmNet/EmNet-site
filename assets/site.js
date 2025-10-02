@@ -98,27 +98,57 @@
   }
 
   const confirmation = form.querySelector('.js-contact-confirmation');
+  const errorMessage = form.querySelector('.js-contact-error');
   const messageInput = form.querySelector('textarea[name="message"]');
   const subjectSelect = form.querySelector('select[name="subject"]');
+  const submitButton = form.querySelector('[type="submit"]');
+  const submitButtonText = submitButton ? submitButton.textContent : '';
 
-  form.addEventListener('input', (event) => {
+  const hideFeedback = () => {
     if (confirmation && !confirmation.hidden) {
       confirmation.hidden = true;
     }
+
+    if (errorMessage && !errorMessage.hidden) {
+      errorMessage.hidden = true;
+    }
+  };
+
+  const setSubmittingState = (isSubmitting) => {
+    if (!submitButton) {
+      return;
+    }
+
+    submitButton.disabled = isSubmitting;
+    if (isSubmitting) {
+      submitButton.setAttribute('aria-disabled', 'true');
+    } else {
+      submitButton.removeAttribute('aria-disabled');
+    }
+
+    submitButton.textContent = isSubmitting ? 'Sending…' : submitButtonText;
+  };
+
+  form.addEventListener('input', (event) => {
+    hideFeedback();
 
     if (event.target === messageInput && messageInput) {
       messageInput.setCustomValidity('');
     }
   });
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
+
+    hideFeedback();
+    setSubmittingState(true);
 
     if (messageInput) {
       messageInput.setCustomValidity('');
     }
 
     if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+      setSubmittingState(false);
       return;
     }
 
@@ -132,6 +162,7 @@
     if (messageInput && message.length < 10) {
       messageInput.setCustomValidity('Message must be at least 10 characters long.');
       messageInput.reportValidity();
+      setSubmittingState(false);
       return;
     }
 
@@ -139,21 +170,29 @@
     const email = getValue('email') || 'N/A';
     const subject = getValue('subject') || 'General enquiry';
 
-    const emailSubject = `Website contact: ${subject}`;
-    const bodyLines = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Subject: ${subject}`,
-      '',
-      message,
-    ];
-
-    const mailtoLink = `mailto:emnet@emnetcm.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
-
     try {
-      window.location.href = mailtoLink;
+      formData.set('name', name);
+      formData.set('email', email);
+      formData.set('subject', subject);
+      formData.set('message', message);
+
+      const response = await fetch(form.action, {
+        method: form.method || 'POST',
+        headers: {
+          Accept: 'application/json',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
     } catch (error) {
-      // Ignore navigation errors.
+      if (errorMessage) {
+        errorMessage.hidden = false;
+      }
+      setSubmittingState(false);
+      return;
     }
 
     if (confirmation) {
@@ -164,6 +203,7 @@
     if (subjectSelect) {
       subjectSelect.value = 'General enquiry';
     }
+    setSubmittingState(false);
   });
 })();
 
