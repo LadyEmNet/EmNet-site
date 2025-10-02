@@ -20,8 +20,16 @@
 <body class="workflow-page">
   <header class="site-header">
     <div class="container header-inner">
-      <img src="assets/logo.png" alt="EmNet logo" class="logo">
-      <nav class="nav">
+      <a href="index.html" class="logo-link" aria-label="EmNet home">
+        <img src="assets/logo.png" alt="EmNet logo" class="logo">
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+      </button>
+      <nav class="nav" id="primary-nav">
         <a href="index.html">Home</a>
         <a href="about.html">About</a>
         <a href="index.html#services">Services</a>
@@ -158,12 +166,19 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container">
-      <small>© <span class="js-current-year"></span> EmNet Community Management Limited</small>
-      <small>Company No. 13716390</small>
-      <small>Registrar of Companies for England and Wales</small>
-      <small>Email: <a href="mailto:Emnet@emnetcm.com">Emnet@emnetcm.com</a></small>
-      <small>Telegram: <a href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a></small>
+    <div class="container footer-inner">
+      <div class="footer-meta">
+        <small>© <span class="js-current-year"></span> EmNet Community Management Limited</small>
+        <small>Company No. 13716390</small>
+        <small>Registrar of Companies for England and Wales</small>
+        <small>Email: <a href="mailto:Emnet@emnetcm.com">Emnet@emnetcm.com</a></small>
+        <small>Telegram: <a href="https://t.me/millieme85" target="_blank" rel="noopener">EmnetCm</a></small>
+      </div>
+      <ul class="footer-social" aria-label="Contact and social links">
+        <li><a href="mailto:Emnet@emnetcm.com">✉️</a></li>
+        <li><a href="https://x.com/EmnetCm" target="_blank" rel="noopener"><img src="assets/xlogo.png" alt="X"></a></li>
+        <li><a href="https://t.me/millieme85" target="_blank" rel="noopener"><img src="assets/tglogo.png" alt="Telegram"></a></li>
+      </ul>
     </div>
   </footer>
   <script src="assets/site.js" defer></script>
