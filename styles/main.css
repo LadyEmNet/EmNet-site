@@ -283,10 +283,18 @@ body.about-page .hero-logo {
 
 .founder-signature {
   display: block;
-  margin: 24px 0 0;
+  margin: 12px 0 0 auto;
   max-width: 220px;
   width: 100%;
   height: auto;
+}
+
+.founder-note p:last-of-type {
+  margin-bottom: 8px;
+}
+
+.founder-note .founder-signature {
+  margin-top: 4px;
 }
 
 .trust-strip {
