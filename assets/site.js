@@ -35,7 +35,7 @@
     return;
   }
 
-  const targets = Array.from(document.querySelectorAll('.metric-number, .ais-heading'));
+  const targets = Array.from(document.querySelectorAll('.scroll-animate'));
   if (!targets.length) {
     return;
   }
