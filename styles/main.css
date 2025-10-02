@@ -5,6 +5,7 @@
 
 :root {
   --site-header-height: 64px;
+  --cookie-banner-height: 0px;
 }
 
 .sr-only {
@@ -37,7 +38,7 @@ body {
   border-bottom: 1px solid #333;
   background: #111;
   position: sticky;
-  top: 0;
+  top: var(--cookie-banner-height, 0px);
   z-index: 10;
 }
 
@@ -803,8 +804,87 @@ body.about-page .hero-logo {
   height: auto;
 }
 
+/* Cookie banner */
+body.cookie-banner-visible {
+  padding-top: var(--cookie-banner-height, 0px);
+}
+
+.cookie-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  background: #111111;
+  color: #ffffff;
+  border-bottom: 1px solid #333333;
+  padding: 18px 0;
+  display: none;
+  z-index: 100;
+}
+
+.cookie-banner.is-visible {
+  display: block;
+}
+
+.cookie-banner__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cookie-banner__message {
+  margin: 0;
+  flex: 1 1 260px;
+  color: #f0f0f0;
+}
+
+.cookie-banner__message a {
+  color: #ff2ebd;
+  text-decoration: underline;
+}
+
+.cookie-banner__message a:hover,
+.cookie-banner__message a:focus-visible {
+  color: #ff5bd0;
+}
+
+.cookie-banner__button {
+  flex: 0 0 auto;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: #ff2ebd;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cookie-banner__button:hover,
+.cookie-banner__button:focus-visible {
+  background: #ff5bd0;
+  outline: none;
+}
+
 /* Mobile tweaks */
 @media (max-width: 640px) {
+  .cookie-banner {
+    padding: 16px 0;
+  }
+
+  .cookie-banner__inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .cookie-banner__message {
+    flex-basis: auto;
+  }
+
   .header-inner {
     flex-wrap: wrap;
     height: auto;
