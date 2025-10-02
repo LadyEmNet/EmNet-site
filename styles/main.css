@@ -1113,6 +1113,200 @@ body.about-page .hero-logo {
   height: auto;
 }
 
+/* Algoland page */
+.algoland-page .algoland-hero {
+  max-width: 840px;
+}
+
+.algoland-page .section-lede {
+  font-size: 1.1rem;
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.algoland-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.algoland-page .summary-card {
+  background: rgba(18, 18, 18, 0.9);
+  border: 1px solid rgba(255, 46, 189, 0.2);
+  border-radius: 18px;
+  padding: 24px;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.algoland-page .summary-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.algoland-page .summary-count {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-weight: 700;
+  color: #26d3c5;
+}
+
+.algoland-page .summary-meta {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.algoland-page .last-updated {
+  margin-top: 24px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.algoland-alerts {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.algoland-alert {
+  border-radius: 14px;
+  padding: 14px 18px;
+  border-left: 4px solid #ffb347;
+  background: rgba(255, 179, 71, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.algoland-alert--info {
+  border-left-color: #26d3c5;
+  background: rgba(38, 211, 197, 0.08);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.data-table caption {
+  text-align: left;
+  padding: 18px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.data-table thead th {
+  text-align: left;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(17, 17, 17, 0.9);
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-table tbody td,
+.data-table tbody th {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+
+.data-table tbody th {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.algoland-table td[data-col="links"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.algoland-table td[data-col="links"] a {
+  color: #26d3c5;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.algoland-table td[data-col="links"] a:hover,
+.algoland-table td[data-col="links"] a:focus-visible {
+  color: #ff5bd0;
+  outline: none;
+}
+
+.algoland-table .address-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.algoland-table .status-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.algoland-table tr.is-syncing {
+  position: relative;
+}
+
+.algoland-table tr.is-syncing::after {
+  content: "Syncing";
+  position: absolute;
+  top: 8px;
+  right: 18px;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffb347;
+}
+
+.algoland-table .warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #ffb347;
+}
+
+.algoland-table .warning-badge::before {
+  content: "⚠";
+  font-size: 0.9rem;
+}
+
+.algoland-table .na-value {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.algoland-page .table-wrapper {
+  background: rgba(0, 0, 0, 0.4);
+}
+
 @media (min-width: 768px) {
   .site-footer {
     text-align: right;
@@ -1336,6 +1530,14 @@ body.cookie-banner-visible {
 
   .services-final-cta {
     margin-inline: 0;
+  }
+
+  .algoland-page .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .data-table {
+    min-width: 520px;
   }
 }
 
