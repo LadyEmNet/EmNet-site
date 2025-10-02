@@ -1,15 +1,19 @@
 # EmNet static site (dark theme)
 
-A lightweight, single-folder site for EmNet Community Management Limited. All pages share a dark palette with neon pink accents that match the EmNet logo.
+A lightweight static site for EmNet Community Management Limited. Every page shares the same neon-accented dark theme and uses `styles/main.css` for layout, typography, and components.
 
-## Pages & assets
-- `index.html` – homepage with hero, services overview, and contact call-to-action.
-- `about.html` – background on EmNet's approach to operational community growth.
-- `how-we-work.html` – breakdown of the audit, implement, sustain process with a next-step CTA.
-- `styles/main.css` – shared styling for layout, typography, and components.
-- `assets/` – logos, favicons, and the `og-image.png` used for social cards.
+## Directory structure
+- `index.html` – marketing homepage with hero, service overview, practical examples, testimonials, and multiple calls-to-action that anchor back to the contact section.
+- `about.html` – standalone founder story with an illustrated hero banner and long-form copy.
+- `services.html` – detailed breakdown of service tiers, pricing, AIS framework highlight, and add-on offerings.
+- `how-we-work.html` – explains the AIS (Audit → Implement → Sustain) workflow and the individual services list.
+- `assets/`
+  - Brand files (`logo.png`, `favicon.png`, `og-image.png`).
+  - Section dividers, banner imagery, social icons, and signature graphics used across pages.
+  - `site.js` – handles responsive navigation toggling and keeps the copyright year current.
+- `styles/main.css` – shared CSS for all pages.
 
-## Update copy or visuals
+## Updating copy or visuals
 1. Replace the logo at `assets/logo.png` (PNG or SVG).
 2. Update the favicon at `assets/favicon.png`.
 3. Swap the social preview image at `assets/og-image.png` if you have a different share card.
@@ -34,4 +38,5 @@ A lightweight, single-folder site for EmNet Community Management Limited. All pa
 
 ## Notes
 - Buttons and links use neon pink (`#ff2ebd`). Adjust `styles/main.css` if you want a different accent colour.
-- All pages share a footer script that keeps the copyright year current.
+- Navigation, footer, and CTA buttons are consistent across every page and pull styles from the shared CSS.
+- `assets/site.js` initialises the mobile navigation toggle and updates the footer year automatically.
