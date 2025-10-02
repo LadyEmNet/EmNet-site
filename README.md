@@ -59,3 +59,6 @@ To publish with GitHub Pages:
 2. Update the favicon at `assets/favicon.png`.
 3. Swap the social preview image at `assets/og-image.png` if you have a different share card.
 4. Edit page copy directly in the relevant HTML file. Each page includes SEO, Open Graph, and Twitter card metadata that can be adjusted as required.
+
+## Algoland data backend
+The `/algoland` dashboard now reads badge completion and entrant counts from a dedicated backend service in [`backend/`](backend/). Deploy this Express app to Render (or another Node-compatible host), configure the `INDEXER_BASE` and `ALLOWED_ORIGINS` environment variables, and point the page at the service by updating the `data-api-base` attribute on `<main data-algoland-root>`.
