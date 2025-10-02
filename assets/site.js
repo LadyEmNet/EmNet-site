@@ -1,4 +1,36 @@
 (function () {
+  const navToggle = document.querySelector('.nav-toggle');
+  const nav = document.getElementById('primary-nav');
+
+  if (!navToggle || !nav) {
+    return;
+  }
+
+  const closeNav = () => {
+    navToggle.setAttribute('aria-expanded', 'false');
+    nav.classList.remove('is-open');
+  };
+
+  navToggle.addEventListener('click', () => {
+    const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+    navToggle.setAttribute('aria-expanded', String(!expanded));
+    nav.classList.toggle('is-open', !expanded);
+  });
+
+  nav.addEventListener('click', (event) => {
+    if (event.target.closest('a')) {
+      closeNav();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 640) {
+      closeNav();
+    }
+  });
+})();
+
+(function () {
   if (!('IntersectionObserver' in window)) {
     return;
   }
