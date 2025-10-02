@@ -185,6 +185,14 @@ body {
   align-items: center;
 }
 
+.hero-home {
+  padding: 0;
+}
+
+.hero-home .hero-banner-content .container {
+  gap: 0;
+}
+
 .hero-about h1 {
   font-size: clamp(42px, 5vw, 64px);
   margin-bottom: 0;
