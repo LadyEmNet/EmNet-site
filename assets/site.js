@@ -1,3 +1,7 @@
+if (window.top !== window.self) {
+  window.top.location = window.location.href;
+}
+
 (function () {
   const navToggle = document.querySelector('.nav-toggle');
   const nav = document.getElementById('primary-nav');
