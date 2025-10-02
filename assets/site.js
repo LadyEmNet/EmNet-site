@@ -31,6 +31,67 @@
 })();
 
 (function () {
+  const banner = document.querySelector('.js-cookie-banner');
+  const acceptButton = banner ? banner.querySelector('.js-cookie-accept') : null;
+  const storageKey = 'emnetCookieConsent';
+  const root = document.documentElement;
+
+  if (!banner || !acceptButton) {
+    return;
+  }
+
+  let hasConsent = false;
+
+  try {
+    hasConsent = window.localStorage.getItem(storageKey) === 'true';
+  } catch (error) {
+    hasConsent = false;
+  }
+
+  const updateBannerOffset = () => {
+    if (!banner.classList.contains('is-visible')) {
+      root.style.setProperty('--cookie-banner-height', '0px');
+      return;
+    }
+
+    root.style.setProperty('--cookie-banner-height', `${banner.offsetHeight}px`);
+  };
+
+  const hideBanner = () => {
+    banner.classList.remove('is-visible');
+    document.body.classList.remove('cookie-banner-visible');
+    updateBannerOffset();
+  };
+
+  const showBanner = () => {
+    banner.classList.add('is-visible');
+    updateBannerOffset();
+    document.body.classList.add('cookie-banner-visible');
+  };
+
+  if (!hasConsent) {
+    showBanner();
+  }
+
+  acceptButton.addEventListener('click', () => {
+    try {
+      window.localStorage.setItem(storageKey, 'true');
+    } catch (error) {
+      // Ignore storage errors and continue closing the banner.
+    }
+    hideBanner();
+  });
+
+  window.addEventListener('resize', () => {
+    if (!banner.classList.contains('is-visible')) {
+      return;
+    }
+
+    updateBannerOffset();
+  });
+})();
+
+(function () {
   if (!('IntersectionObserver' in window)) {
     return;
   }
