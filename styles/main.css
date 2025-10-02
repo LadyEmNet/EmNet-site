@@ -384,6 +384,16 @@ body.about-page .hero-logo {
   color: #e2e2e2;
 }
 
+.workflow-shortcuts-wrapper {
+  position: relative;
+  z-index: 3;
+}
+
+.workflow-shortcuts-wrapper .container {
+  display: flex;
+  justify-content: center;
+}
+
 .workflow-shortcuts {
   display: flex;
   align-items: center;
