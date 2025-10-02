@@ -157,3 +157,15 @@
     motionPreference.addListener(handlePreferenceChange);
   }
 })();
+
+(function () {
+  const targets = document.querySelectorAll('.js-current-year');
+  if (!targets.length) {
+    return;
+  }
+
+  const year = String(new Date().getFullYear());
+  targets.forEach((el) => {
+    el.textContent = year;
+  });
+})();

@@ -1,0 +1,4 @@
+Contact: mailto:Emnet@emnetcm.com
+Preferred-Languages: en
+Canonical: https://www.emnetcm.com/.well-known/security.txt
+Policy: https://www.emnetcm.com/privacy.html
