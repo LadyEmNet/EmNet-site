@@ -3,6 +3,10 @@
   box-sizing: border-box;
 }
 
+:root {
+  --site-header-height: 64px;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif;
@@ -30,7 +34,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  height: var(--site-header-height);
 }
 
 .logo {
@@ -129,8 +133,8 @@ body.about-page .hero-logo {
 
 .section-divider {
   display: block;
-  width: min(100%, 320px);
-  margin: 16px auto;
+  width: min(100%, 160px);
+  margin: clamp(16px, 3vw, 28px) auto;
   height: auto;
 }
 
@@ -283,19 +287,23 @@ body.about-page .hero-logo {
 .workflow-section {
   --workflow-bg: none;
   position: relative;
-  padding: 140px 0;
+  padding: clamp(72px, 12vw, 140px) 0;
   margin: 0;
   display: flex;
   align-items: center;
   color: #ffffff;
-  overflow: hidden;
+  min-height: clamp(420px, 70vh, 640px);
+  isolation: isolate;
 }
 
 .workflow-section::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--workflow-bg) center / cover no-repeat;
+  background-image: var(--workflow-bg);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   z-index: 0;
 }
 
@@ -315,6 +323,8 @@ body.about-page .hero-logo {
   position: relative;
   z-index: 1;
   max-width: 720px;
+  display: grid;
+  gap: clamp(20px, 3vw, 32px);
 }
 
 .workflow-content p {
@@ -326,7 +336,7 @@ body.about-page .hero-logo {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 32px auto;
+  margin: 0 auto;
   font-weight: 600;
   color: #bbbbbb;
   width: fit-content;
@@ -344,6 +354,28 @@ body.about-page .hero-logo {
 
 .workflow-shortcuts span {
   color: #666666;
+}
+
+.workflow-page {
+  scroll-padding-top: calc(var(--site-header-height) + 72px);
+}
+
+.workflow-page .workflow-shortcuts {
+  position: sticky;
+  top: calc(var(--site-header-height) + 16px);
+  margin-bottom: clamp(24px, 4vw, 48px);
+  padding: 12px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(6px);
+  gap: clamp(8px, 1.6vw, 18px);
+  z-index: 3;
+}
+
+.workflow-page .workflow-shortcuts a,
+.workflow-page .workflow-shortcuts span {
+  font-size: clamp(15px, 2.4vw, 17px);
 }
 
 .workflow-section--audit {
@@ -405,7 +437,14 @@ body.about-page .hero-logo {
   }
 
   .workflow-section {
-    padding: 100px 0;
+    padding: clamp(64px, 14vw, 100px) 0;
+    min-height: auto;
+  }
+
+  .workflow-page .workflow-shortcuts {
+    top: calc(var(--site-header-height) + 12px);
+    padding: 10px 18px;
+    gap: 6px;
   }
 
   .final-cta {
