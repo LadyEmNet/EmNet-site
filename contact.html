@@ -106,7 +106,7 @@
           <p class="contact-details__note">Business hours: Monday to Friday, 9am – 6pm (UTC). We aim to reply within one working day.</p>
         </div>
 
-        <form class="contact-form js-contact-form" id="contact-form" action="https://formsubmit.co/emnet@emnetcm.com" method="POST" novalidate>
+        <form class="contact-form js-contact-form" id="contact-form" action="https://formsubmit.co/emnet@emnetcm.com" method="POST" novalidate data-formsubmit-endpoint="https://formsubmit.co/ajax/emnet@emnetcm.com">
           <h2>Send us a message</h2>
           <p class="contact-form__intro">Complete the form and we&rsquo;ll get back to you shortly.</p>
           <div class="contact-form__field">
@@ -136,6 +136,7 @@
           <input type="hidden" name="_subject" value="[EmNet Site] New enquiry">
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://www.emnetcm.com/contact?submitted=true">
           <input type="hidden" name="_honey" tabindex="-1" autocomplete="off" class="contact-form__honeypot" aria-hidden="true">
           <p class="contact-form__privacy">We only use your details to respond to your enquiry. Read our <a href="privacy.html">Privacy Policy</a>.</p>
           <p class="contact-form__error js-contact-error" hidden role="alert" aria-live="assertive">We couldn&rsquo;t send your message just now. Please try again or email <a href="mailto:emnet@emnetcm.com">emnet@emnetcm.com</a>.</p>
