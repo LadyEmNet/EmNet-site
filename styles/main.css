@@ -168,7 +168,7 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.65) 100%);
-  z-index: 0;
+  z-index: 1;
 }
 
 .hero-banner-content {
@@ -179,7 +179,7 @@ body {
   text-align: center;
   padding: clamp(28px, 6vw, 48px) 20px;
   position: absolute;
-  z-index: 1;
+  z-index: 2;
 }
 
 .hero-banner-content .container {
@@ -192,7 +192,28 @@ body {
 }
 
 .hero-home {
-  padding: clamp(64px, 12vw, 120px) 0 0;
+  --hero-home-offset: clamp(64px, 12vw, 120px);
+  padding: var(--hero-home-offset) 0 0;
+}
+
+.hero-home .hero-banner {
+  min-height: clamp(280px, 45vw, 520px);
+  isolation: isolate;
+}
+
+.hero-home .hero-banner::after {
+  top: calc(-1 * var(--hero-home-offset));
+  bottom: 0;
+}
+
+.hero-home .hero-banner-image {
+  position: absolute;
+  top: calc(-1 * var(--hero-home-offset));
+  left: 0;
+  width: 100%;
+  height: calc(clamp(280px, 45vw, 520px) + var(--hero-home-offset));
+  object-fit: cover;
+  z-index: 0;
 }
 
 .hero-home .hero-banner-content .container {
