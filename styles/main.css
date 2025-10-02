@@ -4,7 +4,9 @@
 }
 
 :root {
-  --site-header-height: 64px;
+  --header-logo-height: clamp(32px, 5vw, 40px);
+  --header-vertical-padding: clamp(12px, 2vw, 18px);
+  --site-header-height: calc(var(--header-logo-height) + (var(--header-vertical-padding) * 2));
   --cookie-banner-height: 0px;
 }
 
@@ -64,7 +66,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: var(--site-header-height);
+  min-height: var(--site-header-height);
+  padding: var(--header-vertical-padding) 0;
   position: relative;
 }
 
@@ -74,8 +77,9 @@ body {
 }
 
 .logo {
-  height: 40px;
+  display: block;
   width: auto;
+  height: var(--header-logo-height);
 }
 
 .nav {
@@ -173,7 +177,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 40px 20px;
+  padding: clamp(28px, 6vw, 48px) 20px;
   position: absolute;
   z-index: 1;
 }
@@ -181,16 +185,18 @@ body {
 .hero-banner-content .container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: clamp(12px, 3vw, 24px);
   align-items: center;
+  width: 100%;
+  max-width: 620px;
 }
 
 .hero-home {
-  padding: 0;
+  padding: clamp(16px, 4vw, 32px) 0 0;
 }
 
 .hero-home .hero-banner-content .container {
-  gap: 0;
+  gap: clamp(12px, 3vw, 18px);
 }
 
 .hero-about h1 {
@@ -285,26 +291,33 @@ body {
 
 .hero-logo {
   display: block;
-  margin: 0 auto 32px;
-  width: min(260px, 70vw);
+  margin: 0 auto 28px;
+  width: clamp(140px, 24vw, 208px);
   height: auto;
 }
 
 body.about-page .hero-logo {
-  width: min(420px, 90vw);
+  width: clamp(180px, 32vw, 336px);
 }
 
 .hero h1 {
-  font-size: 40px;
-  margin: 0 0 10px;
+  font-size: clamp(32px, calc(4vw + 12px), 52px);
+  margin: 0 0 12px;
   color: #ffffff;
+  line-height: 1.1;
 }
 
 .hero p {
   max-width: 680px;
-  margin: 0 auto 20px;
-  font-size: 18px;
+  margin: 0 auto 18px;
+  font-size: clamp(17px, calc(1.2vw + 12px), 20px);
+  line-height: 1.6;
   color: #bbbbbb;
+}
+
+.hero-subheading {
+  color: #e4e4e4;
+  font-weight: 500;
 }
 
 .hero-strapline {
@@ -355,6 +368,27 @@ body.about-page .hero-logo {
   justify-content: center;
 }
 
+@media (min-width: 768px) {
+  .hero-banner-content {
+    justify-content: flex-start;
+    text-align: left;
+    padding-inline: clamp(40px, 8vw, 64px);
+  }
+
+  .hero-banner-content .container {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .hero-banner-content .btn {
+    align-self: flex-start;
+  }
+
+  .cta-actions {
+    justify-content: flex-start;
+  }
+}
+
 .section-divider {
   display: block;
   width: min(100%, 160px);
@@ -364,7 +398,7 @@ body.about-page .hero-logo {
 
 /* Sections */
 .section {
-  padding: 56px 0;
+  padding: clamp(48px, 11vw, 84px) 0;
 }
 
 .section h2 {
@@ -410,8 +444,8 @@ body.about-page .hero-logo {
 
 .trust-metrics {
   display: grid;
-  gap: 24px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(16px, 4vw, 28px);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .trust-metric {
@@ -985,14 +1019,14 @@ body.about-page .hero-logo {
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(16px, 4vw, 24px);
 }
 
 .card {
   border: 1px solid #333;
   border-radius: 12px;
-  padding: 16px;
+  padding: clamp(18px, 3vw, 24px);
   background: #1a1a1a;
   color: #ddd;
 }
@@ -1196,8 +1230,7 @@ body.cookie-banner-visible {
 
   .header-inner {
     flex-wrap: wrap;
-    height: auto;
-    padding: 12px 0;
+    padding: var(--header-vertical-padding) 0;
   }
 
   .nav-toggle {
@@ -1231,7 +1264,7 @@ body.cookie-banner-visible {
 
   .hero-logo {
     margin-bottom: 24px;
-    width: min(200px, 80vw);
+    width: min(160px, 64vw);
   }
 
   .hero h1 {
