@@ -103,7 +103,7 @@ if (window.top !== window.self) {
     const totalCharacters = entries.reduce((total, entry) => total + entry.message.length, 0);
     const charactersPerSecond = 12;
     const minDuration = 12;
-    const maxDuration = 30;
+    const maxDuration = 20;
     const durationSeconds = Math.min(
       Math.max(totalCharacters / charactersPerSecond, minDuration),
       maxDuration,
