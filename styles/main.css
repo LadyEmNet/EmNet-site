@@ -216,6 +216,10 @@ body {
   isolation: isolate;
 }
 
+.hero-home .hero-banner-content {
+  padding-top: clamp(60px, 14vw, 128px);
+}
+
 .hero-home .hero-banner::after {
   top: calc(-1 * var(--hero-home-offset));
   bottom: 0;
@@ -330,6 +334,10 @@ body {
   margin: clamp(32px, 8vw, 64px) auto 20px;
   width: clamp(88px, 18vw, 160px);
   height: auto;
+}
+
+.hero-home .hero-logo {
+  margin: clamp(72px, 14vw, 140px) auto clamp(8px, 2vw, 16px);
 }
 
 body.about-page .hero-logo {
