@@ -35,6 +35,111 @@ if (window.top !== window.self) {
 })();
 
 (function () {
+  const marquee = document.querySelector('.js-announcement-marquee');
+  const marqueeTrack = marquee ? marquee.querySelector('.js-marquee-track') : null;
+  const marqueeContent = marquee ? marquee.querySelector('.js-marquee-content') : null;
+
+  if (!marquee || !marqueeTrack || !marqueeContent || typeof window.fetch !== 'function') {
+    return;
+  }
+
+  const spreadsheetId = '1ht93XqQSTmLsypDqJP5JmMRpXz7C4axjs5Xss3-gNac';
+  const requestUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1`;
+  const maxItems = 5;
+
+  const extractEntries = (responseText) => {
+    try {
+      const jsonStart = responseText.indexOf('{');
+      const jsonEnd = responseText.lastIndexOf('}');
+
+      if (jsonStart === -1 || jsonEnd === -1) {
+        return [];
+      }
+
+      const payload = JSON.parse(responseText.slice(jsonStart, jsonEnd + 1));
+      const rows = Array.isArray(payload?.table?.rows) ? payload.table.rows : [];
+
+      return rows
+        .map((row) => {
+          const cells = Array.isArray(row?.c) ? row.c : [];
+          const messageCell = cells[2];
+          const linkCell = cells[3];
+          const message = typeof messageCell?.v === 'string' ? messageCell.v.trim() : String(messageCell?.v ?? '').trim();
+          const url = typeof linkCell?.v === 'string' ? linkCell.v.trim() : String(linkCell?.v ?? '').trim();
+
+          if (!message || !url) {
+            return null;
+          }
+
+          return { message, url };
+        })
+        .filter(Boolean);
+    } catch (error) {
+      console.warn('[Marquee] Failed to parse spreadsheet response', error);
+      return [];
+    }
+  };
+
+  const renderEntries = (entries) => {
+    marqueeContent.innerHTML = '';
+
+    const fragment = document.createDocumentFragment();
+    entries.forEach(({ message, url }) => {
+      const item = document.createElement('span');
+      item.className = 'announcement-marquee__item';
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.textContent = message;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+
+      item.appendChild(link);
+      fragment.appendChild(item);
+    });
+
+    marqueeContent.appendChild(fragment);
+
+    const totalCharacters = entries.reduce((total, entry) => total + entry.message.length, 0);
+    const durationSeconds = Math.min(Math.max(totalCharacters * 0.4, 28), 60);
+    marquee.style.setProperty('--marquee-duration', `${durationSeconds}s`);
+
+    marqueeTrack.querySelectorAll('.announcement-marquee__content--clone').forEach((clone) => {
+      clone.remove();
+    });
+
+    const clone = marqueeContent.cloneNode(true);
+    clone.classList.add('announcement-marquee__content--clone');
+    clone.classList.remove('js-marquee-content');
+    clone.setAttribute('aria-hidden', 'true');
+    marqueeTrack.appendChild(clone);
+  };
+
+  const initialise = async () => {
+    try {
+      const response = await fetch(requestUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Unexpected response: ${response.status}`);
+      }
+
+      const raw = await response.text();
+      const entries = extractEntries(raw).slice(-maxItems);
+
+      if (!entries.length) {
+        return;
+      }
+
+      renderEntries(entries);
+      marquee.hidden = false;
+    } catch (error) {
+      console.warn('[Marquee] Failed to load announcements', error);
+    }
+  };
+
+  initialise();
+})();
+
+(function () {
   const banner = document.querySelector('.js-cookie-banner');
   const acceptButton = banner ? banner.querySelector('.js-cookie-accept') : null;
   const storageKey = 'emnetCookieConsent';
