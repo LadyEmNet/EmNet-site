@@ -94,6 +94,8 @@ body {
   padding: 6px 12px;
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  position: relative;
+  z-index: 2;
 }
 
 .announcement-marquee__track {
@@ -104,6 +106,8 @@ body {
   width: 100%;
   gap: 0;
   animation: marquee-scroll var(--marquee-duration, 38s) linear infinite;
+  position: relative;
+  z-index: 1;
 }
 
 .announcement-marquee__content {
