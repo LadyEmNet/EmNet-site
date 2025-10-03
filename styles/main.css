@@ -177,7 +177,7 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: clamp(28px, 6vw, 48px) 20px;
+  padding: clamp(20px, 5vw, 48px) 20px;
   position: absolute;
   z-index: 2;
 }
@@ -193,11 +193,12 @@ body {
 
 .hero-home {
   --hero-home-offset: clamp(64px, 12vw, 120px);
+  --hero-home-visual-height: clamp(360px, 70vw, 620px);
   padding: var(--hero-home-offset) 0 0;
 }
 
 .hero-home .hero-banner {
-  min-height: clamp(280px, 45vw, 520px);
+  min-height: var(--hero-home-visual-height);
   isolation: isolate;
 }
 
@@ -211,7 +212,7 @@ body {
   top: calc(-1 * var(--hero-home-offset));
   left: 0;
   width: 100%;
-  height: calc(clamp(280px, 45vw, 520px) + var(--hero-home-offset));
+  height: calc(var(--hero-home-visual-height) + var(--hero-home-offset));
   object-fit: cover;
   z-index: 0;
 }
@@ -313,7 +314,7 @@ body {
 .hero-logo {
   display: block;
   margin: 0 auto 28px;
-  width: clamp(140px, 24vw, 208px);
+  width: clamp(100px, 28vw, 208px);
   height: auto;
 }
 
@@ -1477,9 +1478,13 @@ body.cookie-banner-visible {
     padding: 56px 0;
   }
 
+  .hero-home {
+    --hero-home-offset: clamp(48px, 14vw, 72px);
+    --hero-home-visual-height: clamp(360px, 110vw, 560px);
+  }
+
   .hero-logo {
     margin-bottom: 24px;
-    width: min(160px, 64vw);
   }
 
   .hero h1 {
