@@ -82,6 +82,10 @@ body {
   height: var(--header-logo-height);
 }
 
+.home-page .site-header .logo-link {
+  display: none;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -313,8 +317,8 @@ body {
 
 .hero-logo {
   display: block;
-  margin: clamp(48px, 10vw, 96px) auto 28px;
-  width: clamp(100px, 28vw, 208px);
+  margin: clamp(32px, 8vw, 64px) auto 20px;
+  width: clamp(88px, 18vw, 160px);
   height: auto;
 }
 
