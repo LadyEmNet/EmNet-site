@@ -137,15 +137,13 @@ async function getEntrantsCount() {
   const cached = responseCache.get(cacheKey);
   try {
     const start = performance.now();
-    const callers = new Set();
+    const accounts = new Set();
     let nextToken;
     let pageCount = 0;
-    let transactionCount = 0;
 
     const baseParams = {
       limit: 1000,
-      'tx-type': 'appl',
-      'application-id': APP_ID,
+      'include-all': false,
     };
 
     do {
@@ -153,46 +151,28 @@ async function getEntrantsCount() {
       if (nextToken) {
         params.next = nextToken;
       }
-      const page = await indexerRequest('/v2/transactions', params);
+      const page = await indexerRequest(`/v2/applications/${APP_ID}/accounts`, params);
       pageCount += 1;
-      const transactions = Array.isArray(page.transactions) ? page.transactions : [];
-      transactionCount += transactions.length;
-      transactions.forEach((txn) => {
-        const sender = normaliseAddress(
-          txn.sender
-          || txn.snd
-          || txn?.txn?.sender
-          || txn?.txn?.snd,
-        );
-        if (!sender) {
+      const pageAccounts = Array.isArray(page.accounts) ? page.accounts : [];
+      pageAccounts.forEach((account) => {
+        const address = normaliseAddress(account.address);
+        if (!address) {
           return;
         }
-        const appCall = txn['application-transaction'] || txn?.txn?.['application-transaction'];
-        if (!appCall) {
-          return;
-        }
-        const applicationIdRaw = appCall['application-id']
-          || txn['application-id']
-          || txn?.txn?.['application-id'];
-        const applicationId = Number.parseInt(applicationIdRaw, 10);
-        if (Number.isFinite(applicationId) && applicationId !== APP_ID) {
-          return;
-        }
-        callers.add(sender);
+        accounts.add(address);
       });
       nextToken = page['next-token'] || null;
     } while (nextToken);
 
     const durationMs = performance.now() - start;
-    const entrantCount = callers.size;
+    const entrantCount = accounts.size;
     const payload = {
       entrants: entrantCount,
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
       meta: {
         pageCount,
-        transactionCount,
-        uniqueCallers: entrantCount,
+        uniqueAccounts: entrantCount,
         durationMs,
       },
     };
@@ -200,7 +180,6 @@ async function getEntrantsCount() {
     console.info('[Algoland API] Entrants computed', {
       entrants: entrantCount,
       pageCount,
-      transactionCount,
       durationMs,
     });
     return payload;
@@ -241,17 +220,6 @@ async function getAssetMetadata(assetId) {
   return metadata;
 }
 
-function normaliseAmount(amount, decimals) {
-  if (!Number.isFinite(amount)) {
-    return 0;
-  }
-  if (!Number.isFinite(decimals) || decimals <= 0) {
-    return amount;
-  }
-  const divisor = 10 ** decimals;
-  return amount / divisor;
-}
-
 function normaliseAddress(value) {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -275,128 +243,47 @@ async function getCompletionsForAsset(assetId) {
   const cached = responseCache.get(cacheKey);
   try {
     const start = performance.now();
-    const receivers = new Set();
+    const holders = new Set();
     const {
-      decimals,
       adminAddresses,
-      creationRound,
     } = await getAssetMetadata(assetId);
 
-    const allowlist = new Set(
+    const excludedAddresses = new Set(
       getAllowlistForAsset(assetId)
         .map(normaliseAddress)
         .filter(Boolean),
     );
-    adminAddresses.forEach((address) => allowlist.add(address));
+    adminAddresses.forEach((address) => excludedAddresses.add(address));
 
-    let topLevelPages = 0;
-    let innerPages = 0;
-    let topLevelHits = 0;
-    let innerHits = 0;
-
-    const minRound = Number.isFinite(creationRound) ? creationRound : undefined;
-
-    const baseAxferParams = {
-      limit: 1000,
-      'tx-type': 'axfer',
-    };
-    if (minRound !== undefined) {
-      baseAxferParams['min-round'] = minRound;
-    }
-
-    function processTransfer(txn, fallbackSender) {
-      if (!txn) {
-        return false;
-      }
-      const transfer = txn['asset-transfer-transaction']
-        || txn?.txn?.['asset-transfer-transaction'];
-      if (!transfer) {
-        return false;
-      }
-      const transferAssetId = Number.parseInt(transfer['asset-id'], 10);
-      if (Number.isFinite(transferAssetId) && transferAssetId !== assetId) {
-        return false;
-      }
-      const rawAmount = Number(transfer.amount) || 0;
-      if (rawAmount <= 0) {
-        return false;
-      }
-      const amount = normaliseAmount(rawAmount, decimals);
-      if (amount <= 0) {
-        return false;
-      }
-      const txnSender = normaliseAddress(
-        txn.sender
-        || txn.snd
-        || txn?.txn?.sender
-        || txn?.txn?.snd
-        || fallbackSender,
-      );
-      const assetSender = normaliseAddress(transfer['asset-sender']) || txnSender;
-      if (!allowlist.has(txnSender) && !allowlist.has(assetSender)) {
-        return false;
-      }
-      const receiver = normaliseAddress(transfer.receiver);
-      if (!receiver || adminAddresses.has(receiver)) {
-        return false;
-      }
-      if (receiver === txnSender || receiver === assetSender) {
-        return false;
-      }
-      receivers.add(receiver);
-      return true;
-    }
-
+    let pageCount = 0;
+    let accountCount = 0;
     let nextToken;
-    do {
-      const params = { ...baseAxferParams };
-      if (nextToken) {
-        params.next = nextToken;
-      }
-      const data = await indexerRequest(`/v2/assets/${assetId}/transactions`, params);
-      topLevelPages += 1;
-      const transactions = Array.isArray(data.transactions) ? data.transactions : [];
-      transactions.forEach((txn) => {
-        if (processTransfer(txn)) {
-          topLevelHits += 1;
-        }
-      });
-      nextToken = data['next-token'] || null;
-    } while (nextToken);
 
-    const baseInnerParams = {
+    const baseParams = {
       limit: 1000,
-      'tx-type': 'appl',
-      'application-id': APP_ID,
+      'include-all': false,
+      'currency-greater-than': 0,
     };
-    if (minRound !== undefined) {
-      baseInnerParams['min-round'] = minRound;
-    }
 
-    nextToken = undefined;
     do {
-      const params = { ...baseInnerParams };
+      const params = { ...baseParams };
       if (nextToken) {
         params.next = nextToken;
       }
-      const page = await indexerRequest('/v2/transactions', params);
-      innerPages += 1;
-      const transactions = Array.isArray(page.transactions) ? page.transactions : [];
-      transactions.forEach((txn) => {
-        const innerTransactions = Array.isArray(txn['inner-txns']) ? txn['inner-txns'] : [];
-        innerTransactions.forEach((innerTxn) => {
-          const resolvedTxn = innerTxn.txn ? { ...innerTxn, ...innerTxn.txn } : { ...innerTxn };
-          const txType = resolvedTxn['tx-type'] || innerTxn['tx-type'];
-          if (txType !== 'axfer') {
-            return;
-          }
-          if (!resolvedTxn['asset-transfer-transaction'] && innerTxn['asset-transfer-transaction']) {
-            resolvedTxn['asset-transfer-transaction'] = innerTxn['asset-transfer-transaction'];
-          }
-          if (processTransfer(resolvedTxn, txn.sender)) {
-            innerHits += 1;
-          }
-        });
+      const page = await indexerRequest(`/v2/assets/${assetId}/balances`, params);
+      pageCount += 1;
+      const balances = Array.isArray(page.balances) ? page.balances : [];
+      accountCount += balances.length;
+      balances.forEach((balance) => {
+        const address = normaliseAddress(balance.address);
+        if (!address || excludedAddresses.has(address) || adminAddresses.has(address)) {
+          return;
+        }
+        const amount = Number(balance.amount) || 0;
+        if (amount <= 0) {
+          return;
+        }
+        holders.add(address);
       });
       nextToken = page['next-token'] || null;
     } while (nextToken);
@@ -404,30 +291,22 @@ async function getCompletionsForAsset(assetId) {
     const durationMs = performance.now() - start;
     const payload = {
       assetId: Number.parseInt(assetId, 10),
-      completions: receivers.size,
+      completions: holders.size,
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
       meta: {
         durationMs,
-        topLevel: {
-          pageCount: topLevelPages,
-          hits: topLevelHits,
-        },
-        inner: {
-          pageCount: innerPages,
-          hits: innerHits,
-        },
+        pageCount,
+        scannedBalances: accountCount,
+        uniqueHolders: holders.size,
       },
     };
     responseCache.set(cacheKey, payload);
     console.info('[Algoland API] Completions computed', {
       assetId,
-      completions: receivers.size,
-      topLevelPages,
-      innerPages,
-      topLevelHits,
-      innerHits,
-      uniqueReceivers: receivers.size,
+      completions: holders.size,
+      pageCount,
+      scannedBalances: accountCount,
       durationMs,
     });
     return payload;
