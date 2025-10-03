@@ -75,11 +75,12 @@ body {
 .announcement-marquee__viewport {
   position: relative;
   overflow: hidden;
-  padding: 8px 12px;
+  padding: 12px;
   min-height: var(--announcement-marquee-height);
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .announcement-marquee__badge {
@@ -88,15 +89,19 @@ body {
   height: calc(var(--announcement-marquee-height) - 16px);
   max-height: 100%;
   object-fit: contain;
-  opacity: 0.8;
+  opacity: 0.9;
+  background-color: #000;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
 .announcement-marquee__track {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  width: max-content;
-  min-width: 100%;
+  min-width: 0;
+  width: 100%;
   gap: 0;
   animation: marquee-scroll var(--marquee-duration, 38s) linear infinite;
 }
