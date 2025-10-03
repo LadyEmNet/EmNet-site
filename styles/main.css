@@ -165,17 +165,21 @@ body {
   background: transparent;
 }
 
+
 .hero-banner {
   position: relative;
   width: 100%;
   display: grid;
+  min-height: clamp(420px, 68vh, 680px);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .hero-banner-image {
   grid-area: 1 / 1;
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -208,7 +212,7 @@ body {
 }
 
 .hero-home {
-  padding: clamp(56px, 14vw, 128px) 0 0;
+  padding: clamp(24px, 10vw, 72px) 0 0;
 }
 
 .hero-home .hero-banner {
@@ -217,16 +221,18 @@ body {
 }
 
 .hero-home .hero-banner-content {
-  padding-top: clamp(40px, 12vw, 96px);
-  padding-bottom: clamp(32px, 10vw, 80px);
+  align-items: flex-start;
+  padding-top: clamp(16px, 6vw, 48px);
+  padding-bottom: clamp(20px, 6vw, 48px);
 }
 
 .hero-home .hero-banner::after {
   inset: 0;
 }
 
+
 .hero-home .hero-banner-content .container {
-  gap: clamp(12px, 3vw, 18px);
+  gap: clamp(16px, 4vw, 24px);
 }
 
 .hero-about h1 {
@@ -327,7 +333,7 @@ body {
 }
 
 .hero-home .hero-logo {
-  margin: clamp(72px, 14vw, 140px) auto clamp(8px, 2vw, 16px);
+  margin: clamp(16px, 6vw, 40px) auto clamp(10px, 3vw, 18px);
 }
 
 body.about-page .hero-logo {
@@ -414,36 +420,36 @@ body.about-page .hero-logo {
   }
 
   .cta-actions {
-    justify-content: flex-start;
+    justify-content: center;
   }
 }
 
 .section-divider {
   display: block;
-  width: min(100%, 160px);
-  margin: clamp(16px, 3vw, 28px) auto;
+  width: clamp(140px, 24vw, 220px);
+  margin: clamp(28px, 6vw, 56px) auto;
   height: auto;
 }
 
 .hero-divider {
   display: block;
-  width: min(100%, 220px);
-  margin: clamp(32px, 6vw, 56px) auto;
+  width: clamp(160px, 28vw, 260px);
+  margin: clamp(28px, 6vw, 52px) auto;
   height: auto;
 }
 
 /* Sections */
 .section {
-  padding: clamp(64px, 12vw, 120px) 0;
+  padding: clamp(48px, 10vw, 112px) 0;
 }
 
 .home-page .hero-home {
-  padding-bottom: clamp(96px, 14vw, 160px);
+  padding-bottom: clamp(64px, 12vw, 128px);
   border-bottom: 1px solid #222;
 }
 
 .home-page .section {
-  padding: clamp(88px, 14vw, 160px) 0;
+  padding: clamp(64px, 12vw, 128px) 0;
   border-top: 1px solid #222;
   border-bottom: 1px solid #222;
 }
