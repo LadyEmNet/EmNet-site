@@ -414,15 +414,31 @@ body.about-page .hero-logo {
 }
 
 .hero-divider {
+  display: block;
   width: min(100%, 220px);
-  margin: clamp(32px, 6vw, 56px) 0;
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  margin: clamp(32px, 6vw, 56px) auto;
+  height: auto;
 }
 
 /* Sections */
 .section {
   padding: clamp(64px, 12vw, 120px) 0;
+}
+
+.home-page .hero-home {
+  padding-bottom: clamp(96px, 14vw, 160px);
+  border-bottom: 1px solid #222;
+}
+
+.home-page .section {
+  padding: clamp(88px, 14vw, 160px) 0;
+  border-top: 1px solid #222;
+  border-bottom: 1px solid #222;
+}
+
+.home-page .hero-home + .section,
+.home-page .section + .section {
+  margin-top: -1px;
 }
 
 .section h2 {
