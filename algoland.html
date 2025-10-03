@@ -81,37 +81,195 @@
   </header>
 
   <main data-algoland-root data-api-base="https://algoland-api.onrender.com">
-    <section class="container section algoland-hero">
-      <h1>Algoland progress</h1>
-      <p class="section-lede">Live on chain counts of challenge entrants and badge completions.</p>
-      <p>The Algoland retail campaign spans 13 weekly challenges. This page summarises wallet opt-ins to the campaign application and badge completions distributed by approved organisers.</p>
+    <section class="algoland-hero">
+      <div class="algoland-hero__inner container">
+        <h1>Algoland progress</h1>
+        <p class="section-lede">Live on chain counts of challenge entrants and badge completions.</p>
+        <p>The Algoland retail campaign spans 13 weekly challenges. This page summarises wallet opt-ins to the campaign application and badge completions distributed by approved organisers.</p>
+      </div>
     </section>
 
     <section class="container section algoland-summary" aria-live="polite">
-      <div class="summary-grid">
-        <article class="summary-card" role="listitem">
-          <h2>Entrants</h2>
+      <div class="summary-highlight" role="list">
+        <article class="summary-card summary-card--headline" role="listitem">
+          <h2>Total entrants</h2>
           <p class="summary-count" data-summary="entrants" title="Wallets opted in to application 3215540125.">—</p>
-          <p class="summary-meta">App 3215540125</p>
+          <p class="summary-meta">Application 3215540125</p>
         </article>
-        <article class="summary-card" role="listitem">
-          <h2>Week 1 completed</h2>
-          <p class="summary-count" data-summary="week-1" title="Wallets that received the week’s badge from the official distributor.">—</p>
-          <p class="summary-meta">ASA 3215542831</p>
-        </article>
-        <article class="summary-card" role="listitem">
-          <h2>Week 2 completed</h2>
-          <p class="summary-count" data-summary="week-2" title="Wallets that received the week’s badge from the official distributor.">—</p>
-          <p class="summary-meta">ASA 3215542840</p>
-        </article>
-        <article class="summary-card" role="listitem">
-          <h2>Overall completed</h2>
+        <article class="summary-card summary-card--headline" role="listitem">
+          <h2>Total badges claimed so far</h2>
           <p class="summary-count" data-summary="overall">—</p>
-          <p class="summary-meta">Live weeks only</p>
+          <p class="summary-meta">Aggregated completions</p>
         </article>
       </div>
       <p class="last-updated" data-algoland-updated aria-live="polite"></p>
     </section>
+
+    <section class="container section algoland-calendar" aria-live="polite">
+      <h2 class="algoland-calendar__title">Weekly challenge tracker</h2>
+      <div class="weeks-grid">
+        <article class="week-card is-open" data-week-card data-week="1" data-opens-on="2025-09-22">
+          <div class="week-card__header">
+            <h3>Week 1</h3>
+            <p class="week-card__status" data-week-status>Open now</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>3215542831</span></p>
+          <p class="week-card__opens" data-week-open-text>Opened 22 September 2025</p>
+        </article>
+        <article class="week-card is-open" data-week-card data-week="2" data-opens-on="2025-09-29">
+          <div class="week-card__header">
+            <h3>Week 2</h3>
+            <p class="week-card__status" data-week-status>Open now</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>3215542840</span></p>
+          <p class="week-card__opens" data-week-open-text>Opened 29 September 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="3" data-opens-on="2025-10-06">
+          <div class="week-card__header">
+            <h3>Week 3</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 6 October</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 6 October 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="4" data-opens-on="2025-10-13">
+          <div class="week-card__header">
+            <h3>Week 4</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 13 October</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 13 October 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="5" data-opens-on="2025-10-20">
+          <div class="week-card__header">
+            <h3>Week 5</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 20 October</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 20 October 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="6" data-opens-on="2025-10-27">
+          <div class="week-card__header">
+            <h3>Week 6</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 27 October</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 27 October 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="7" data-opens-on="2025-11-03">
+          <div class="week-card__header">
+            <h3>Week 7</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 3 November</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 3 November 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="8" data-opens-on="2025-11-10">
+          <div class="week-card__header">
+            <h3>Week 8</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 10 November</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 10 November 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="9" data-opens-on="2025-11-17">
+          <div class="week-card__header">
+            <h3>Week 9</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 17 November</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 17 November 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="10" data-opens-on="2025-11-24">
+          <div class="week-card__header">
+            <h3>Week 10</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 24 November</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 24 November 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="11" data-opens-on="2025-12-01">
+          <div class="week-card__header">
+            <h3>Week 11</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 1 December</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 1 December 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="12" data-opens-on="2025-12-08">
+          <div class="week-card__header">
+            <h3>Week 12</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 8 December</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 8 December 2025</p>
+        </article>
+        <article class="week-card" data-week-card data-week="13" data-opens-on="2025-12-15">
+          <div class="week-card__header">
+            <h3>Week 13</h3>
+            <p class="week-card__status" data-week-status>Opens Monday 15 December</p>
+          </div>
+          <p class="week-card__count">
+            <span class="week-card__count-number" data-week-completions>—</span>
+            <span class="week-card__count-label">badges claimed</span>
+          </p>
+          <p class="week-card__badge">Badge ASA <span data-week-badge>Coming soon</span></p>
+          <p class="week-card__opens" data-week-open-text>Opens Monday 15 December 2025</p>
+        </article>
+      </div>
+    </section>
+
+    <div class="container">
+      <img src="assets/divider.png" alt="" class="section-divider" aria-hidden="true" loading="lazy" decoding="async">
+    </div>
 
     <section class="container section algoland-table-section">
       <div class="algoland-alerts" role="status" aria-live="polite" data-algoland-alerts></div>
@@ -121,131 +279,131 @@
           <thead>
             <tr>
               <th scope="col">Week</th>
-              <th scope="col">Badge ASA</th>
-              <th scope="col">Distributor (short)</th>
-              <th scope="col">Entrants</th>
+              <th scope="col" class="is-hidden-column">Badge ASA</th>
+              <th scope="col" class="is-hidden-column">Distributor (short)</th>
+              <th scope="col" class="is-hidden-column">Entrants</th>
               <th scope="col">Completed</th>
               <th scope="col">Conversion</th>
-              <th scope="col">Explorer links</th>
+              <th scope="col" class="is-hidden-column">Explorer links</th>
             </tr>
           </thead>
           <tbody>
             <tr data-week="1">
               <th scope="row">Week 1</th>
-              <td data-col="badge">3215542831</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">3215542831</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed" title="Wallets that received the week’s badge from the official distributor.">—</td>
               <td data-col="conversion">—</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="2">
               <th scope="row">Week 2</th>
-              <td data-col="badge">3215542840</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">3215542840</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed" title="Wallets that received the week’s badge from the official distributor.">—</td>
               <td data-col="conversion">—</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="3">
               <th scope="row">Week 3</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="4">
               <th scope="row">Week 4</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="5">
               <th scope="row">Week 5</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="6">
               <th scope="row">Week 6</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="7">
               <th scope="row">Week 7</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="8">
               <th scope="row">Week 8</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="9">
               <th scope="row">Week 9</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="10">
               <th scope="row">Week 10</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="11">
               <th scope="row">Week 11</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="12">
               <th scope="row">Week 12</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
             <tr data-week="13">
               <th scope="row">Week 13</th>
-              <td data-col="badge">Coming soon</td>
-              <td data-col="distributor" data-distributor-index="0"></td>
-              <td data-col="entrants" title="Wallets opted in to application 3215540125.">—</td>
+              <td data-col="badge" class="is-hidden-column">Coming soon</td>
+              <td data-col="distributor" data-distributor-index="0" class="is-hidden-column"></td>
+              <td data-col="entrants" title="Wallets opted in to application 3215540125." class="is-hidden-column">—</td>
               <td data-col="completed">N/A</td>
               <td data-col="conversion">N/A</td>
-              <td data-col="links"></td>
+              <td data-col="links" class="is-hidden-column"></td>
             </tr>
           </tbody>
         </table>
