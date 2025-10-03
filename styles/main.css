@@ -75,9 +75,23 @@ body {
   position: relative;
   overflow: hidden;
   padding: 8px 0;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.announcement-marquee__badge {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: auto;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0.8;
 }
 
 .announcement-marquee__track {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   width: max-content;
