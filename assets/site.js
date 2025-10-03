@@ -88,7 +88,7 @@ if (window.top !== window.self) {
       startOffset: 0,
       startPointerX: 0,
       contentWidth: 0,
-      speed: 30,
+      speed: 5,
       isDragging: false,
       isManualPause: false,
       isReducedMotion: false,
