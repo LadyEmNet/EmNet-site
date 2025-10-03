@@ -132,9 +132,137 @@ async function indexerRequest(path, params = {}) {
   throw lastError || new Error('Indexer request failed');
 }
 
-async function getEntrantsCount() {
-  const cacheKey = 'entrants';
-  const cached = responseCache.get(cacheKey);
+function decodeStateKey(key) {
+  if (typeof key !== 'string' || key.length === 0) {
+    return undefined;
+  }
+  try {
+    return Buffer.from(key, 'base64').toString('utf8');
+  } catch (error) {
+    console.warn('[Algoland API] Failed to decode state key', {
+      message: error.message,
+    });
+    return undefined;
+  }
+}
+
+function toSafeInteger(value) {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      return undefined;
+    }
+    return Math.trunc(value);
+  }
+  if (typeof value === 'bigint') {
+    if (value < 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return undefined;
+    }
+    return Number(value);
+  }
+  if (typeof value === 'string') {
+    if (value.trim().length === 0) {
+      return undefined;
+    }
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function extractUintValue(stateValue) {
+  if (!stateValue || typeof stateValue !== 'object') {
+    return undefined;
+  }
+  const directUint = toSafeInteger(stateValue.uint);
+  if (directUint !== undefined && directUint >= 0) {
+    return directUint;
+  }
+  if (typeof stateValue.bytes === 'string' && stateValue.bytes.length > 0) {
+    try {
+      const buffer = Buffer.from(stateValue.bytes, 'base64');
+      if (buffer.length === 0) {
+        return 0;
+      }
+      const hex = buffer.toString('hex');
+      if (hex.length === 0) {
+        return 0;
+      }
+      const bigintValue = BigInt(`0x${hex}`);
+      return toSafeInteger(bigintValue);
+    } catch (error) {
+      console.warn('[Algoland API] Failed to decode uint from bytes', {
+        message: error.message,
+      });
+    }
+  }
+  return undefined;
+}
+
+async function getUserCounterFromApplication() {
+  const application = await indexerRequest(`/v2/applications/${APP_ID}`);
+  const globalState = application?.application?.params?.['global-state'];
+  if (!Array.isArray(globalState)) {
+    throw new Error('Application global state unavailable');
+  }
+  for (const entry of globalState) {
+    const keyName = decodeStateKey(entry?.key);
+    if (keyName !== 'userCounter') {
+      continue;
+    }
+    const counter = extractUintValue(entry?.value);
+    if (counter === undefined) {
+      throw new Error('userCounter value invalid');
+    }
+    return counter;
+  }
+  throw new Error('userCounter not found in global state');
+}
+
+async function tryGetEntrantsFromGlobalCounter(cacheKey, cached) {
+  const start = performance.now();
+  try {
+    const counter = await getUserCounterFromApplication();
+    if (!Number.isFinite(counter) || counter < 0) {
+      console.warn('[Algoland API] Invalid global counter value', {
+        counter,
+      });
+      return null;
+    }
+    if (cached && Number.isFinite(cached.entrants) && counter < cached.entrants) {
+      console.warn('[Algoland API] Global counter lower than cached entrants, triggering enumeration fallback', {
+        counter,
+        cachedEntrants: cached.entrants,
+      });
+      return null;
+    }
+    const durationMs = performance.now() - start;
+    const payload = {
+      entrants: counter,
+      updatedAt: new Date().toISOString(),
+      source: INDEXER_BASE,
+      meta: {
+        method: 'global-state',
+        durationMs,
+        appId: APP_ID,
+      },
+    };
+    responseCache.set(cacheKey, payload);
+    console.info('[Algoland API] Entrants counter fetched from global state', {
+      entrants: counter,
+      durationMs,
+    });
+    return payload;
+  } catch (error) {
+    console.warn('[Algoland API] Failed to read global entrants counter', {
+      message: error.message,
+    });
+    return null;
+  }
+}
+
+async function enumerateEntrants(cacheKey, cached) {
   try {
     const start = performance.now();
     const accounts = new Set();
@@ -171,13 +299,14 @@ async function getEntrantsCount() {
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
       meta: {
+        method: 'enumeration',
         pageCount,
         uniqueAccounts: entrantCount,
         durationMs,
       },
     };
     responseCache.set(cacheKey, payload);
-    console.info('[Algoland API] Entrants computed', {
+    console.info('[Algoland API] Entrants computed via enumeration', {
       entrants: entrantCount,
       pageCount,
       durationMs,
@@ -185,13 +314,23 @@ async function getEntrantsCount() {
     return payload;
   } catch (error) {
     if (cached) {
-      console.warn('[Algoland API] Entrants falling back to cache', {
+      console.warn('[Algoland API] Entrants enumeration falling back to cache', {
         message: error.message,
       });
       return { ...cached, stale: true };
     }
     throw error;
   }
+}
+
+async function getEntrantsCount() {
+  const cacheKey = 'entrants';
+  const cached = responseCache.get(cacheKey);
+  const counterPayload = await tryGetEntrantsFromGlobalCounter(cacheKey, cached);
+  if (counterPayload) {
+    return counterPayload;
+  }
+  return enumerateEntrants(cacheKey, cached);
 }
 
 async function getAssetMetadata(assetId) {
