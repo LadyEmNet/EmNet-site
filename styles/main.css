@@ -337,12 +337,13 @@ body.about-page .hero-logo {
   color: #bbbbbb;
 }
 
-.hero-subheading-image {
-  display: block;
-  max-width: min(100%, 520px);
-  width: 100%;
-  height: auto;
-  margin: 0 auto 18px;
+.hero-subheading-text {
+  margin: 12px auto;
+  font-size: clamp(32px, calc(4vw + 12px), 52px);
+  font-style: italic;
+  font-weight: 500;
+  color: #ff2ebd;
+  text-align: center;
 }
 
 .hero-strapline {
