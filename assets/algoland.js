@@ -366,15 +366,20 @@
       const opensOn = card.opensOn;
       const manualOpen = card.defaultIsOpen;
       const isOpen = opensOn ? now >= opensOn || manualOpen : manualOpen;
+      const openedForMs = opensOn ? now - opensOn : 0;
+      const isCatchUp = isOpen && openedForMs >= ONE_WEEK_IN_MS;
       card.card.classList.toggle('is-open', isOpen);
       card.card.classList.toggle('is-upcoming', !isOpen);
+      card.card.classList.toggle('is-catchup', isCatchUp);
 
       if (card.statusElement) {
-        const openedForMs = opensOn ? now - opensOn : 0;
-        if (isOpen && openedForMs >= ONE_WEEK_IN_MS) {
+        card.statusElement.classList.toggle('is-catchup', isCatchUp);
+        if (isCatchUp) {
           card.statusElement.textContent = 'Catch up';
         } else if (isOpen) {
           card.statusElement.textContent = weekSnapshot.status === 'coming-soon' ? 'Open this week' : 'Open now';
+        } else if (weekSnapshot.assetId && opensOn) {
+          card.statusElement.textContent = 'Ready for Coming Monday';
         } else if (opensOn) {
           card.statusElement.textContent = `Opens ${formatOpenDate(opensOn)}`;
         } else {
