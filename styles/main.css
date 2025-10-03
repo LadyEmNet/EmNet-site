@@ -61,6 +61,88 @@ body {
   z-index: 10;
 }
 
+.announcement-marquee {
+  background: #0d0d0d;
+  border-bottom: 1px solid #222;
+  color: #f0f0f0;
+}
+
+.announcement-marquee[hidden] {
+  display: none !important;
+}
+
+.announcement-marquee__viewport {
+  position: relative;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+.announcement-marquee__track {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  min-width: 100%;
+  gap: 0;
+  animation: marquee-scroll var(--marquee-duration, 38s) linear infinite;
+}
+
+.announcement-marquee__content {
+  display: inline-flex;
+  align-items: center;
+}
+
+.announcement-marquee__item {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.announcement-marquee__item a {
+  color: #f0f0f0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.announcement-marquee__item a:hover,
+.announcement-marquee__item a:focus-visible {
+  color: #ff2ebd;
+  outline: none;
+}
+
+.announcement-marquee__item::after {
+  content: '\00a0\00a0\00a0│\00a0';
+  color: rgba(240, 240, 240, 0.5);
+  margin: 0 12px;
+}
+
+.announcement-marquee__item:last-child::after {
+  content: '\00a0\00a0\00a0│\00a0';
+}
+
+.announcement-marquee:hover .announcement-marquee__track,
+.announcement-marquee:focus-within .announcement-marquee__track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-marquee__track {
+    animation: none;
+    transform: translateX(0);
+  }
+}
+
 .header-inner {
   display: flex;
   align-items: center;
