@@ -105,9 +105,16 @@ body {
   min-width: 0;
   width: 100%;
   gap: 0;
-  animation: marquee-scroll var(--marquee-duration, 10s) linear infinite;
   position: relative;
   z-index: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.announcement-marquee__track.is-user-interacting {
+  cursor: grabbing;
 }
 
 .announcement-marquee__content {
@@ -145,26 +152,8 @@ body {
   content: '\00a0\00a0\00a0│\00a0';
 }
 
-.announcement-marquee:hover .announcement-marquee__track,
-.announcement-marquee:focus-within .announcement-marquee__track {
-  animation-play-state: paused;
-}
-
-@keyframes marquee-scroll {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .announcement-marquee__track {
-    animation: none;
-    transform: translateX(0);
-  }
+.announcement-marquee__track.is-reduced-motion {
+  cursor: default;
 }
 
 .header-inner {

@@ -80,6 +80,264 @@ if (window.top !== window.self) {
     }
   };
 
+  let marqueeScroller = null;
+
+  const createMarqueeScroller = () => {
+    const state = {
+      offset: 0,
+      startOffset: 0,
+      startPointerX: 0,
+      contentWidth: 0,
+      speed: 60,
+      isDragging: false,
+      isManualPause: false,
+      isReducedMotion: false,
+      lastTimestamp: null,
+      pointerId: null,
+      hasDragged: false,
+      suppressClick: false,
+    };
+
+    const applyTransform = () => {
+      if (!marqueeTrack) {
+        return;
+      }
+
+      if (state.contentWidth <= 0) {
+        marqueeTrack.style.transform = 'translateX(0px)';
+        return;
+      }
+
+      marqueeTrack.style.transform = `translateX(${-state.offset}px)`;
+    };
+
+    const normaliseOffset = () => {
+      if (state.contentWidth <= 0) {
+        return;
+      }
+
+      state.offset = ((state.offset % state.contentWidth) + state.contentWidth) % state.contentWidth;
+    };
+
+    const updateReducedMotion = (matches) => {
+      state.isReducedMotion = Boolean(matches);
+
+      if (!marqueeTrack) {
+        return;
+      }
+
+      marqueeTrack.classList.toggle('is-reduced-motion', state.isReducedMotion);
+      state.lastTimestamp = null;
+
+      if (state.isReducedMotion) {
+        state.offset = 0;
+        applyTransform();
+      }
+    };
+
+    const refresh = () => {
+      if (!marqueeContent || !marquee) {
+        return;
+      }
+
+      state.contentWidth = marqueeContent.offsetWidth;
+      normaliseOffset();
+
+      const durationText = window.getComputedStyle(marquee).getPropertyValue('--marquee-duration');
+      const durationSeconds = parseFloat(durationText) || 0;
+
+      if (state.contentWidth > 0 && durationSeconds > 0) {
+        state.speed = state.contentWidth / durationSeconds;
+      }
+
+      applyTransform();
+    };
+
+    const step = (timestamp) => {
+      if (state.lastTimestamp === null) {
+        state.lastTimestamp = timestamp;
+      }
+
+      const delta = timestamp - state.lastTimestamp;
+      state.lastTimestamp = timestamp;
+
+      const shouldAutoScroll =
+        !state.isDragging && !state.isManualPause && !state.isReducedMotion && state.contentWidth > 0 && state.speed > 0;
+
+      if (shouldAutoScroll) {
+        state.offset += state.speed * (delta / 1000);
+        normaliseOffset();
+        applyTransform();
+      }
+
+      window.requestAnimationFrame(step);
+    };
+
+    const stopDragging = () => {
+      if (!state.isDragging) {
+        return;
+      }
+
+      state.isDragging = false;
+      marqueeTrack.classList.remove('is-user-interacting');
+
+      if (state.pointerId !== null && typeof marqueeTrack.releasePointerCapture === 'function') {
+        try {
+          marqueeTrack.releasePointerCapture(state.pointerId);
+        } catch (error) {
+          // Ignore pointer capture release errors.
+        }
+      }
+
+      state.pointerId = null;
+      state.lastTimestamp = null;
+    };
+
+    const handlePointerDown = (event) => {
+      if (event.button !== undefined && event.button !== 0) {
+        return;
+      }
+
+      if (state.contentWidth <= 0) {
+        return;
+      }
+
+      state.isDragging = true;
+      state.startPointerX = event.clientX;
+      state.startOffset = state.offset;
+      state.pointerId = event.pointerId ?? null;
+      state.hasDragged = false;
+      state.suppressClick = false;
+      marqueeTrack.classList.add('is-user-interacting');
+
+      if (typeof marqueeTrack.setPointerCapture === 'function' && state.pointerId !== null) {
+        try {
+          marqueeTrack.setPointerCapture(state.pointerId);
+        } catch (error) {
+          // Ignore pointer capture issues.
+        }
+      }
+
+      state.lastTimestamp = null;
+    };
+
+    const handlePointerMove = (event) => {
+      if (!state.isDragging) {
+        return;
+      }
+
+      const deltaX = event.clientX - state.startPointerX;
+      state.offset = state.startOffset - deltaX;
+      normaliseOffset();
+      applyTransform();
+
+      if (!state.hasDragged && Math.abs(deltaX) > 4) {
+        state.hasDragged = true;
+      }
+    };
+
+    const handlePointerUp = () => {
+      const dragged = state.hasDragged;
+      stopDragging();
+      state.hasDragged = false;
+      state.suppressClick = dragged;
+
+      if (!dragged) {
+        state.suppressClick = false;
+      }
+    };
+
+    const handleMouseEnter = () => {
+      state.isManualPause = true;
+    };
+
+    const handleMouseLeave = () => {
+      if (marquee.contains(document.activeElement)) {
+        return;
+      }
+
+      state.isManualPause = false;
+      state.lastTimestamp = null;
+    };
+
+    const handleFocusIn = () => {
+      state.isManualPause = true;
+    };
+
+    const handleFocusOut = (event) => {
+      if (event.relatedTarget && marquee.contains(event.relatedTarget)) {
+        return;
+      }
+
+      state.isManualPause = false;
+      state.lastTimestamp = null;
+    };
+
+    const handleClickCapture = (event) => {
+      if (!state.suppressClick) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      state.suppressClick = false;
+    };
+
+    marqueeTrack.addEventListener('pointerdown', handlePointerDown);
+    marqueeTrack.addEventListener('pointermove', handlePointerMove);
+    marqueeTrack.addEventListener('pointerup', handlePointerUp);
+    marqueeTrack.addEventListener('pointercancel', handlePointerUp);
+    marqueeTrack.addEventListener('lostpointercapture', stopDragging);
+    marqueeTrack.addEventListener('click', handleClickCapture, true);
+
+    marquee.addEventListener('mouseleave', handleMouseLeave);
+    marquee.addEventListener('mouseenter', handleMouseEnter);
+    marquee.addEventListener('focusin', handleFocusIn);
+    marquee.addEventListener('focusout', handleFocusOut);
+
+    window.addEventListener('blur', stopDragging);
+
+    if (typeof window.ResizeObserver === 'function') {
+      const resizeObserver = new window.ResizeObserver(() => {
+        window.requestAnimationFrame(() => {
+          refresh();
+        });
+      });
+      resizeObserver.observe(marqueeContent);
+    } else {
+      window.addEventListener('resize', () => {
+        window.requestAnimationFrame(() => {
+          refresh();
+        });
+      });
+    }
+
+    const motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
+    if (motionQuery) {
+      updateReducedMotion(motionQuery.matches);
+
+      const listener = () => {
+        updateReducedMotion(motionQuery.matches);
+      };
+
+      if (typeof motionQuery.addEventListener === 'function') {
+        motionQuery.addEventListener('change', listener);
+      } else if (typeof motionQuery.addListener === 'function') {
+        motionQuery.addListener(listener);
+      }
+    }
+
+    refresh();
+    window.requestAnimationFrame(step);
+
+    return {
+      refresh,
+      applyTransform,
+      updateReducedMotion,
+    };
+  };
+
   const renderEntries = (entries) => {
     marqueeContent.innerHTML = '';
 
@@ -119,6 +377,12 @@ if (window.top !== window.self) {
     clone.classList.remove('js-marquee-content');
     clone.setAttribute('aria-hidden', 'true');
     marqueeTrack.appendChild(clone);
+
+    if (!marqueeScroller) {
+      marqueeScroller = createMarqueeScroller();
+    }
+
+    marqueeScroller.refresh();
   };
 
   const initialise = async () => {
