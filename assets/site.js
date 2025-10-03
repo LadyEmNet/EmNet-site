@@ -359,9 +359,9 @@ if (window.top !== window.self) {
     marqueeContent.appendChild(fragment);
 
     const totalCharacters = entries.reduce((total, entry) => total + entry.message.length, 0);
-    const charactersPerSecond = 18;
-    const minDuration = 12;
-    const maxDuration = 15;
+    const charactersPerSecond = 9;
+    const minDuration = 24;
+    const maxDuration = 30;
     const durationSeconds = Math.min(
       Math.max(totalCharacters / charactersPerSecond, minDuration),
       maxDuration,
