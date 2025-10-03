@@ -313,7 +313,7 @@ body {
 
 .hero-logo {
   display: block;
-  margin: 0 auto 28px;
+  margin: clamp(48px, 10vw, 96px) auto 28px;
   width: clamp(100px, 28vw, 208px);
   height: auto;
 }
@@ -335,15 +335,6 @@ body.about-page .hero-logo {
   font-size: clamp(17px, calc(1.2vw + 12px), 20px);
   line-height: 1.6;
   color: #bbbbbb;
-}
-
-.hero-subheading-text {
-  margin: 12px auto;
-  font-size: clamp(32px, calc(4vw + 12px), 52px);
-  font-style: italic;
-  font-weight: 500;
-  color: #ff2ebd;
-  text-align: center;
 }
 
 .hero-strapline {
@@ -420,6 +411,13 @@ body.about-page .hero-logo {
   width: min(100%, 160px);
   margin: clamp(16px, 3vw, 28px) auto;
   height: auto;
+}
+
+.hero-divider {
+  width: min(100%, 220px);
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Sections */
@@ -1687,7 +1685,7 @@ body.cookie-banner-visible {
   }
 
   .hero-logo {
-    margin-bottom: 24px;
+    margin: clamp(40px, 16vw, 72px) auto 24px;
   }
 
   .hero h1 {
