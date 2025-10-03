@@ -4,8 +4,8 @@
 }
 
 :root {
-  --header-logo-height: clamp(32px, 5vw, 40px);
-  --header-vertical-padding: clamp(12px, 2vw, 18px);
+  --header-logo-height: clamp(16px, 2.5vw, 20px);
+  --header-vertical-padding: clamp(18px, 3vw, 28px);
   --site-header-height: calc(var(--header-logo-height) + (var(--header-vertical-padding) * 2));
   --cookie-banner-height: 0px;
 }
