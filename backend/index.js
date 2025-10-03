@@ -193,10 +193,13 @@ async function getAssetMetadata(assetId) {
     params.reserve,
     params.freeze,
     params.clawback,
-  ].filter(Boolean));
+  ].map(normaliseAddress).filter(Boolean));
+  const creationRoundRaw = asset?.asset?.['created-at-round'];
+  const creationRound = Number.parseInt(creationRoundRaw, 10);
   const metadata = {
     decimals: Number.parseInt(params.decimals, 10) || 0,
     adminAddresses,
+    creationRound: Number.isFinite(creationRound) ? creationRound : undefined,
   };
   assetMetadataCache.set(cacheKey, metadata, 24 * 60 * 60);
   return metadata;
@@ -213,63 +216,182 @@ function normaliseAmount(amount, decimals) {
   return amount / divisor;
 }
 
+function normaliseAddress(value) {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed.toUpperCase() : undefined;
+  }
+  if (!value) {
+    return undefined;
+  }
+  if (typeof value.toString === 'function') {
+    const stringValue = value.toString();
+    if (typeof stringValue === 'string') {
+      const trimmed = stringValue.trim();
+      return trimmed ? trimmed.toUpperCase() : undefined;
+    }
+  }
+  return undefined;
+}
+
 async function getCompletionsForAsset(assetId) {
   const cacheKey = `completions:${assetId}`;
   const cached = responseCache.get(cacheKey);
   try {
-    const allowlist = new Set(getAllowlistForAsset(assetId));
-    const { decimals, adminAddresses } = await getAssetMetadata(assetId);
-    const receivers = new Set();
-    let nextToken;
-    let pageCount = 0;
     const start = performance.now();
+    const receivers = new Set();
+    const {
+      decimals,
+      adminAddresses,
+      creationRound,
+    } = await getAssetMetadata(assetId);
+
+    const allowlist = new Set(
+      getAllowlistForAsset(assetId)
+        .map(normaliseAddress)
+        .filter(Boolean),
+    );
+    adminAddresses.forEach((address) => allowlist.add(address));
+
+    let topLevelPages = 0;
+    let innerPages = 0;
+    let topLevelHits = 0;
+    let innerHits = 0;
+
+    const minRound = Number.isFinite(creationRound) ? creationRound : undefined;
+
+    const baseAxferParams = {
+      limit: 1000,
+      'tx-type': 'axfer',
+    };
+    if (minRound !== undefined) {
+      baseAxferParams['min-round'] = minRound;
+    }
+
+    function processTransfer(txn, fallbackSender) {
+      if (!txn) {
+        return false;
+      }
+      const transfer = txn['asset-transfer-transaction']
+        || txn?.txn?.['asset-transfer-transaction'];
+      if (!transfer) {
+        return false;
+      }
+      const transferAssetId = Number.parseInt(transfer['asset-id'], 10);
+      if (Number.isFinite(transferAssetId) && transferAssetId !== assetId) {
+        return false;
+      }
+      const rawAmount = Number(transfer.amount) || 0;
+      if (rawAmount <= 0) {
+        return false;
+      }
+      const amount = normaliseAmount(rawAmount, decimals);
+      if (amount <= 0) {
+        return false;
+      }
+      const txnSender = normaliseAddress(
+        txn.sender
+        || txn.snd
+        || txn?.txn?.sender
+        || txn?.txn?.snd
+        || fallbackSender,
+      );
+      const assetSender = normaliseAddress(transfer['asset-sender']) || txnSender;
+      if (!allowlist.has(txnSender) && !allowlist.has(assetSender)) {
+        return false;
+      }
+      const receiver = normaliseAddress(transfer.receiver);
+      if (!receiver || adminAddresses.has(receiver)) {
+        return false;
+      }
+      if (receiver === txnSender || receiver === assetSender) {
+        return false;
+      }
+      receivers.add(receiver);
+      return true;
+    }
+
+    let nextToken;
     do {
-      const params = {
-        limit: 1000,
-        'tx-type': 'axfer',
-      };
+      const params = { ...baseAxferParams };
       if (nextToken) {
         params.next = nextToken;
       }
       const data = await indexerRequest(`/v2/assets/${assetId}/transactions`, params);
-      pageCount += 1;
+      topLevelPages += 1;
       const transactions = Array.isArray(data.transactions) ? data.transactions : [];
       transactions.forEach((txn) => {
-        const transfer = txn['asset-transfer-transaction'];
-        if (!transfer) {
-          return;
+        if (processTransfer(txn)) {
+          topLevelHits += 1;
         }
-        const rawAmount = Number(transfer.amount) || 0;
-        const amount = normaliseAmount(rawAmount, decimals);
-        if (amount <= 0) {
-          return;
-        }
-        const txnSender = txn.sender;
-        const assetSender = transfer.sender || txnSender;
-        if (!allowlist.has(txnSender) && !allowlist.has(assetSender)) {
-          return;
-        }
-        const receiver = transfer.receiver;
-        if (!receiver || adminAddresses.has(receiver)) {
-          return;
-        }
-        receivers.add(receiver);
       });
       nextToken = data['next-token'] || null;
     } while (nextToken);
+
+    const baseInnerParams = {
+      limit: 1000,
+      'tx-type': 'appl',
+      'application-id': APP_ID,
+    };
+    if (minRound !== undefined) {
+      baseInnerParams['min-round'] = minRound;
+    }
+
+    nextToken = undefined;
+    do {
+      const params = { ...baseInnerParams };
+      if (nextToken) {
+        params.next = nextToken;
+      }
+      const page = await indexerRequest('/v2/transactions', params);
+      innerPages += 1;
+      const transactions = Array.isArray(page.transactions) ? page.transactions : [];
+      transactions.forEach((txn) => {
+        const innerTransactions = Array.isArray(txn['inner-txns']) ? txn['inner-txns'] : [];
+        innerTransactions.forEach((innerTxn) => {
+          const resolvedTxn = innerTxn.txn ? { ...innerTxn, ...innerTxn.txn } : { ...innerTxn };
+          const txType = resolvedTxn['tx-type'] || innerTxn['tx-type'];
+          if (txType !== 'axfer') {
+            return;
+          }
+          if (!resolvedTxn['asset-transfer-transaction'] && innerTxn['asset-transfer-transaction']) {
+            resolvedTxn['asset-transfer-transaction'] = innerTxn['asset-transfer-transaction'];
+          }
+          if (processTransfer(resolvedTxn, txn.sender)) {
+            innerHits += 1;
+          }
+        });
+      });
+      nextToken = page['next-token'] || null;
+    } while (nextToken);
+
     const durationMs = performance.now() - start;
     const payload = {
       assetId: Number.parseInt(assetId, 10),
       completions: receivers.size,
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
-      meta: { pageCount, durationMs },
+      meta: {
+        durationMs,
+        topLevel: {
+          pageCount: topLevelPages,
+          hits: topLevelHits,
+        },
+        inner: {
+          pageCount: innerPages,
+          hits: innerHits,
+        },
+      },
     };
     responseCache.set(cacheKey, payload);
     console.info('[Algoland API] Completions computed', {
       assetId,
       completions: receivers.size,
-      pageCount,
+      topLevelPages,
+      innerPages,
+      topLevelHits,
+      innerHits,
+      uniqueReceivers: receivers.size,
       durationMs,
     });
     return payload;

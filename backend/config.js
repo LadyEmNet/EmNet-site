@@ -1,4 +1,6 @@
-export const APP_ID = 3215540125;
+const RAW_APP_ID = process.env.ALGOLAND_APP_ID || '3215540125';
+const PARSED_APP_ID = Number.parseInt(RAW_APP_ID, 10);
+export const APP_ID = Number.isFinite(PARSED_APP_ID) ? PARSED_APP_ID : 3215540125;
 
 export const WEEK_CONFIG = [
   { week: 1, assetId: 3215542831 },
