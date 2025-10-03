@@ -1115,8 +1115,18 @@ body.about-page .hero-logo {
 }
 
 /* Algoland page */
-.algoland-page .algoland-hero {
+.algoland-hero {
+  position: relative;
+  padding: clamp(88px, 18vw, 160px) 0;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.8)), url('../assets/Algoland.jpg') center/cover no-repeat;
+}
+
+.algoland-hero__inner {
+  position: relative;
   max-width: 840px;
+  display: grid;
+  gap: clamp(16px, 3vw, 28px);
 }
 
 .algoland-page .section-lede {
@@ -1124,10 +1134,10 @@ body.about-page .hero-logo {
   color: rgba(240, 240, 240, 0.9);
 }
 
-.algoland-page .summary-grid {
+.algoland-page .summary-highlight {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(20px, 5vw, 32px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1136,11 +1146,17 @@ body.about-page .hero-logo {
 .algoland-page .summary-card {
   background: rgba(18, 18, 18, 0.9);
   border: 1px solid rgba(255, 46, 189, 0.2);
-  border-radius: 18px;
-  padding: 24px;
+  border-radius: 20px;
+  padding: clamp(24px, 4vw, 32px);
   display: grid;
-  gap: 6px;
+  gap: 8px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.algoland-page .summary-card--headline {
+  background: rgba(18, 18, 18, 0.85);
+  border: 1px solid rgba(38, 211, 197, 0.32);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.4);
 }
 
 .algoland-page .summary-card h2 {
@@ -1153,7 +1169,7 @@ body.about-page .hero-logo {
 
 .algoland-page .summary-count {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-size: clamp(2.4rem, 6vw, 3.1rem);
   font-weight: 700;
   color: #26d3c5;
 }
@@ -1168,6 +1184,133 @@ body.about-page .hero-logo {
   margin-top: 24px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.6);
+}
+
+.algoland-page .algoland-calendar {
+  padding-top: 0;
+}
+
+.algoland-page .algoland-calendar__title {
+  margin-bottom: clamp(20px, 4vw, 32px);
+}
+
+.algoland-page .weeks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(16px, 4vw, 28px);
+}
+
+@media (min-width: 1024px) {
+  .algoland-page .weeks-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.algoland-page .week-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: clamp(20px, 4vw, 28px);
+  border-radius: 18px;
+  background: rgba(14, 14, 14, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.algoland-page .week-card.is-open {
+  background: rgba(25, 25, 25, 0.9);
+  border-color: rgba(38, 211, 197, 0.4);
+}
+
+.algoland-page .week-card:not(.is-open) {
+  opacity: 0.82;
+}
+
+.algoland-page .week-card:hover,
+.algoland-page .week-card:focus-within {
+  transform: translateY(-4px);
+  border-color: rgba(255, 46, 189, 0.35);
+}
+
+.algoland-page .week-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.algoland-page .week-card__header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.algoland-page .week-card__status {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(83, 240, 227, 0.9);
+}
+
+.algoland-page .week-card:not(.is-open) .week-card__status {
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.algoland-page .week-card__count {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.algoland-page .week-card__count-number {
+  font-size: clamp(1.8rem, 4.5vw, 2.4rem);
+  font-weight: 700;
+  color: #ff5bd0;
+}
+
+.algoland-page .week-card.is-open .week-card__count-number {
+  color: #26d3c5;
+}
+
+.algoland-page .week-card.is-upcoming .week-card__count-number {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.algoland-page .week-card__count-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.algoland-page .week-card__badge,
+.algoland-page .week-card__opens {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.algoland-page .week-card__badge span {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.algoland-page .week-card.is-open .week-card__opens {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.algoland-page .na-value {
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+}
+
+.algoland-table .is-hidden-column {
+  display: none;
 }
 
 .algoland-alerts {

@@ -11,19 +11,19 @@
   const APP_ID = 3215540125;
 
   const weeksConfig = [
-    { week: 1, assetId: '3215542831', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 2, assetId: '3215542840', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 3, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 4, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 5, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 6, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 7, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 8, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 9, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 10, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 11, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 12, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
-    { week: 13, assetId: '', distributors: [DEFAULT_DISTRIBUTOR] },
+    { week: 1, assetId: '3215542831', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-22' },
+    { week: 2, assetId: '3215542840', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-29' },
+    { week: 3, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
+    { week: 4, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-13' },
+    { week: 5, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
+    { week: 6, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
+    { week: 7, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-03' },
+    { week: 8, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-10' },
+    { week: 9, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-17' },
+    { week: 10, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-24' },
+    { week: 11, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-01' },
+    { week: 12, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-08' },
+    { week: 13, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-15' },
   ];
 
   const numberFormatter = new Intl.NumberFormat('en-GB');
@@ -32,16 +32,32 @@
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  const openDateFormatter = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const openDateYearFormatter = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  function formatOpenDate(date, { includeYear = false } = {}) {
+    const formatter = includeYear ? openDateYearFormatter : openDateFormatter;
+    const formatted = formatter.format(date);
+    return formatted.replace(/,/g, '');
+  }
 
   const summaryElements = {
     entrants: root.querySelector('[data-summary="entrants"]'),
-    week1: root.querySelector('[data-summary="week-1"]'),
-    week2: root.querySelector('[data-summary="week-2"]'),
     overall: root.querySelector('[data-summary="overall"]'),
   };
   const alertsContainer = root.querySelector('[data-algoland-alerts]');
   const table = root.querySelector('[data-algoland-table]');
   const updatedElement = root.querySelector('[data-algoland-updated]');
+  const weekCards = createWeekCardMap();
 
   const state = {
     snapshot: loadSnapshot(),
@@ -321,29 +337,108 @@
   function renderSnapshot(snapshot, { fromCache, alerts }) {
     renderSummary(snapshot);
     renderTable(snapshot);
+    renderWeeks(snapshot);
     renderAlerts(alerts, fromCache);
     renderUpdated(snapshot);
   }
 
   function renderSummary(snapshot) {
     const entrantsCount = typeof snapshot.entrants?.count === 'number' ? snapshot.entrants.count : null;
-    const week1 = snapshot.weeks.find((week) => week.week === 1);
-    const week2 = snapshot.weeks.find((week) => week.week === 2);
     const liveWeeks = snapshot.weeks.filter((week) => typeof week.completions === 'number');
     const overallCompleted = liveWeeks.reduce((total, week) => total + (week.completions || 0), 0);
 
     if (summaryElements.entrants) {
       summaryElements.entrants.textContent = entrantsCount !== null ? numberFormatter.format(entrantsCount) : '—';
     }
-    if (summaryElements.week1) {
-      summaryElements.week1.textContent = typeof week1?.completions === 'number' ? numberFormatter.format(week1.completions) : '—';
-    }
-    if (summaryElements.week2) {
-      summaryElements.week2.textContent = typeof week2?.completions === 'number' ? numberFormatter.format(week2.completions) : '—';
-    }
     if (summaryElements.overall) {
       summaryElements.overall.textContent = liveWeeks.length > 0 ? numberFormatter.format(overallCompleted) : '—';
     }
+  }
+
+  function renderWeeks(snapshot) {
+    const now = new Date();
+    snapshot.weeks.forEach((weekSnapshot) => {
+      const card = weekCards.get(weekSnapshot.week);
+      if (!card) {
+        return;
+      }
+      const opensOn = card.opensOn;
+      const manualOpen = card.defaultIsOpen;
+      const isOpen = opensOn ? now >= opensOn || manualOpen : manualOpen;
+      card.card.classList.toggle('is-open', isOpen);
+      card.card.classList.toggle('is-upcoming', !isOpen);
+
+      if (card.statusElement) {
+        if (isOpen) {
+          card.statusElement.textContent = weekSnapshot.status === 'coming-soon' ? 'Open this week' : 'Open now';
+        } else if (opensOn) {
+          card.statusElement.textContent = `Opens ${formatOpenDate(opensOn)}`;
+        } else {
+          card.statusElement.textContent = 'Opens soon';
+        }
+      }
+
+      if (card.openTextElement) {
+        if (opensOn) {
+          const formatted = formatOpenDate(opensOn, { includeYear: true });
+          card.openTextElement.textContent = isOpen ? `Opened ${formatted}` : `Opens ${formatted}`;
+        } else {
+          card.openTextElement.textContent = isOpen ? 'Open now' : 'Opens soon';
+        }
+      }
+
+      if (card.badgeElement) {
+        if (weekSnapshot.assetId) {
+          card.badgeElement.textContent = weekSnapshot.assetId;
+          card.badgeElement.classList.remove('na-value');
+        } else {
+          card.badgeElement.textContent = 'Coming soon';
+          card.badgeElement.classList.add('na-value');
+        }
+      }
+
+      if (card.completionsElement) {
+        if (typeof weekSnapshot.completions === 'number') {
+          card.completionsElement.textContent = numberFormatter.format(weekSnapshot.completions);
+        } else if (!isOpen) {
+          card.completionsElement.textContent = 'N/A';
+        } else {
+          card.completionsElement.textContent = '—';
+        }
+      }
+    });
+  }
+
+  function createWeekCardMap() {
+    const entries = [];
+    root.querySelectorAll('[data-week-card]').forEach((card) => {
+      const week = Number.parseInt(card.dataset.week, 10);
+      if (Number.isNaN(week)) {
+        return;
+      }
+      const config = weeksConfig.find((item) => item.week === week);
+      const opensOnSource = card.dataset.opensOn || config?.opensOn || null;
+      let opensOn = null;
+      if (opensOnSource) {
+        const parsed = new Date(opensOnSource);
+        if (!Number.isNaN(parsed.getTime())) {
+          opensOn = parsed;
+        }
+      }
+      entries.push([
+        week,
+        {
+          card,
+          opensOn,
+          statusElement: card.querySelector('[data-week-status]'),
+          completionsElement: card.querySelector('[data-week-completions]'),
+          badgeElement: card.querySelector('[data-week-badge]'),
+          openTextElement: card.querySelector('[data-week-open-text]'),
+          defaultIsOpen: card.classList.contains('is-open'),
+        },
+      ]);
+    });
+    return new Map(entries);
   }
 
   function renderTable(snapshot) {
