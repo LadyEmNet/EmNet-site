@@ -1129,6 +1129,20 @@ body.about-page .hero-logo {
   gap: clamp(16px, 3vw, 28px);
 }
 
+.algoland-hero__copy {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 36px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+  display: grid;
+  gap: clamp(16px, 3vw, 24px);
+}
+
+.algoland-hero__copy .cta-actions {
+  justify-content: flex-start;
+}
+
 .algoland-page .section-lede {
   font-size: 1.1rem;
   color: rgba(240, 240, 240, 0.9);

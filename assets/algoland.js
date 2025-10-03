@@ -7,6 +7,7 @@
   const API_BASE = normaliseBase(root.dataset.apiBase || window.EMNET_ALGOLAND_API_BASE || '');
   const SNAPSHOT_KEY = 'emnet.algoland.snapshot.v2';
   const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+  const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
   const DEFAULT_DISTRIBUTOR = 'HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM';
   const APP_ID = 3215540125;
 
@@ -369,7 +370,10 @@
       card.card.classList.toggle('is-upcoming', !isOpen);
 
       if (card.statusElement) {
-        if (isOpen) {
+        const openedForMs = opensOn ? now - opensOn : 0;
+        if (isOpen && openedForMs >= ONE_WEEK_IN_MS) {
+          card.statusElement.textContent = 'Catch up';
+        } else if (isOpen) {
           card.statusElement.textContent = weekSnapshot.status === 'coming-soon' ? 'Open this week' : 'Open now';
         } else if (opensOn) {
           card.statusElement.textContent = `Opens ${formatOpenDate(opensOn)}`;
