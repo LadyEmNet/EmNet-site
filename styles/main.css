@@ -62,6 +62,7 @@ body {
 }
 
 .announcement-marquee {
+  --announcement-marquee-height: 48px;
   background: #0d0d0d;
   border-bottom: 1px solid #222;
   color: #f0f0f0;
@@ -74,17 +75,17 @@ body {
 .announcement-marquee__viewport {
   position: relative;
   overflow: hidden;
-  padding: 8px 0;
+  padding: 8px 12px;
+  min-height: var(--announcement-marquee-height);
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 12px;
 }
 
 .announcement-marquee__badge {
   flex: 0 0 auto;
-  align-self: stretch;
   width: auto;
-  height: 100%;
+  height: calc(var(--announcement-marquee-height) - 16px);
   max-height: 100%;
   object-fit: contain;
   opacity: 0.8;
