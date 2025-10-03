@@ -97,7 +97,7 @@ body {
   width: max-content;
   min-width: 100%;
   gap: 0;
-  animation: marquee-scroll var(--marquee-duration, 38s) linear infinite;
+  animation: marquee-scroll var(--marquee-duration, 18s) linear infinite;
 }
 
 .announcement-marquee__content {
