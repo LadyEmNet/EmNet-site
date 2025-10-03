@@ -1151,6 +1151,8 @@ body.about-page .hero-logo {
   display: grid;
   gap: 8px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  justify-items: center;
 }
 
 .algoland-page .summary-card--headline {
