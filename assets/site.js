@@ -101,7 +101,13 @@ if (window.top !== window.self) {
     marqueeContent.appendChild(fragment);
 
     const totalCharacters = entries.reduce((total, entry) => total + entry.message.length, 0);
-    const durationSeconds = Math.min(Math.max(totalCharacters * 0.4, 28), 60);
+    const charactersPerSecond = 12;
+    const minDuration = 12;
+    const maxDuration = 30;
+    const durationSeconds = Math.min(
+      Math.max(totalCharacters / charactersPerSecond, minDuration),
+      maxDuration,
+    );
     marquee.style.setProperty('--marquee-duration', `${durationSeconds}s`);
 
     marqueeTrack.querySelectorAll('.announcement-marquee__content--clone').forEach((clone) => {
