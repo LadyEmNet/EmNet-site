@@ -105,7 +105,7 @@ body {
   min-width: 0;
   width: 100%;
   gap: 0;
-  animation: marquee-scroll var(--marquee-duration, 38s) linear infinite;
+  animation: marquee-scroll var(--marquee-duration, 18s) linear infinite;
   position: relative;
   z-index: 1;
 }
