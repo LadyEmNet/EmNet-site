@@ -137,34 +137,70 @@ async function getEntrantsCount() {
   const cached = responseCache.get(cacheKey);
   try {
     const start = performance.now();
+    const callers = new Set();
     let nextToken;
     let pageCount = 0;
-    let totalAccounts = 0;
+    let transactionCount = 0;
+
+    const baseParams = {
+      limit: 1000,
+      'tx-type': 'appl',
+      'application-id': APP_ID,
+    };
+
     do {
-      const params = {
-        'application-id': APP_ID,
-        limit: 1000,
-      };
+      const params = { ...baseParams };
       if (nextToken) {
         params.next = nextToken;
       }
-      const page = await indexerRequest('/v2/accounts', params);
+      const page = await indexerRequest('/v2/transactions', params);
       pageCount += 1;
-      const accounts = Array.isArray(page.accounts) ? page.accounts : [];
-      totalAccounts += accounts.length;
+      const transactions = Array.isArray(page.transactions) ? page.transactions : [];
+      transactionCount += transactions.length;
+      transactions.forEach((txn) => {
+        const sender = normaliseAddress(
+          txn.sender
+          || txn.snd
+          || txn?.txn?.sender
+          || txn?.txn?.snd,
+        );
+        if (!sender) {
+          return;
+        }
+        const appCall = txn['application-transaction'] || txn?.txn?.['application-transaction'];
+        if (!appCall) {
+          return;
+        }
+        const applicationIdRaw = appCall['application-id']
+          || txn['application-id']
+          || txn?.txn?.['application-id'];
+        const applicationId = Number.parseInt(applicationIdRaw, 10);
+        if (Number.isFinite(applicationId) && applicationId !== APP_ID) {
+          return;
+        }
+        callers.add(sender);
+      });
       nextToken = page['next-token'] || null;
     } while (nextToken);
+
     const durationMs = performance.now() - start;
+    const entrantCount = callers.size;
     const payload = {
-      entrants: totalAccounts,
+      entrants: entrantCount,
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
-      meta: { pageCount, durationMs },
+      meta: {
+        pageCount,
+        transactionCount,
+        uniqueCallers: entrantCount,
+        durationMs,
+      },
     };
     responseCache.set(cacheKey, payload);
     console.info('[Algoland API] Entrants computed', {
-      entrants: totalAccounts,
+      entrants: entrantCount,
       pageCount,
+      transactionCount,
       durationMs,
     });
     return payload;
