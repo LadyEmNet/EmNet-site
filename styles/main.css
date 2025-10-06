@@ -1644,6 +1644,165 @@ body.about-page .hero-logo {
   background: rgba(0, 0, 0, 0.4);
 }
 
+body.prize-modal-open {
+  overflow: hidden;
+}
+
+.prize-modal[hidden] {
+  display: none !important;
+}
+
+.prize-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 32px);
+  background: rgba(5, 9, 20, 0.76);
+  backdrop-filter: blur(8px);
+  z-index: 1200;
+  overflow-y: auto;
+}
+
+.prize-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 9, 20, 0.85);
+  z-index: 0;
+}
+
+.prize-modal__dialog {
+  position: relative;
+  width: min(560px, 100%);
+  background: rgba(14, 14, 14, 0.96);
+  border: 1px solid rgba(38, 211, 197, 0.4);
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  padding: clamp(24px, 4vw, 36px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 20px);
+  z-index: 1;
+}
+
+.prize-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.prize-modal__close:hover,
+.prize-modal__close:focus-visible {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  outline: none;
+}
+
+.prize-modal__content {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 24px);
+  text-align: center;
+}
+
+.prize-modal__content h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.prize-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 3vw, 18px);
+}
+
+.prize-modal__image {
+  width: min(260px, 65vw);
+  height: auto;
+  align-self: center;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.prize-modal__message {
+  margin: 0;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.prize-modal__asa {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prize-modal__subheading {
+  margin: 12px 0 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(38, 211, 197, 0.9);
+}
+
+.prize-modal__winners {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.prize-modal__winners li {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(24, 24, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  word-break: break-all;
+}
+
+.prize-modal__empty {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prize-modal__meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 480px) {
+  .prize-modal__dialog {
+    padding: 24px;
+  }
+
+  .prize-modal__close {
+    width: 32px;
+    height: 32px;
+    font-size: 1.25rem;
+  }
+}
+
 @media (min-width: 768px) {
   .site-footer {
     text-align: right;
