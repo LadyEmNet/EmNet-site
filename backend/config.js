@@ -3,7 +3,7 @@ const PARSED_APP_ID = Number.parseInt(RAW_APP_ID, 10);
 export const APP_ID = Number.isFinite(PARSED_APP_ID) ? PARSED_APP_ID : 3215540125;
 
 export const WEEK_CONFIG = [
-  { week: 1, assetId: 3215542832 },
+  { week: 1, assetId: 3215542836 },
   { week: 2, assetId: 3215542840 },
   { week: 3, assetId: null },
   { week: 4, assetId: null },
