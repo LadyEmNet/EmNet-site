@@ -537,6 +537,16 @@ if (window.top !== window.self) {
       return typeof value === 'string' ? value.trim() : '';
     };
 
+    const honeypotValue = getValue('_honey');
+    if (honeypotValue) {
+      form.reset();
+      if (subjectSelect) {
+        subjectSelect.value = 'General enquiry';
+      }
+      setSubmittingState(false);
+      return;
+    }
+
     const message = getValue('message');
     if (messageInput && message.length < 10) {
       messageInput.setCustomValidity('Message must be at least 10 characters long.');

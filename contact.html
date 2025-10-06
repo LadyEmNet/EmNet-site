@@ -148,7 +148,10 @@
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="false">
           <input type="hidden" name="_next" value="https://www.emnetcm.com/contact?submitted=true">
-          <input type="hidden" name="_honey" tabindex="-1" autocomplete="off" class="contact-form__honeypot" aria-hidden="true">
+          <div class="contact-form__honeypot" aria-hidden="true">
+            <label for="contact-company">Company</label>
+            <input id="contact-company" type="text" name="_honey" tabindex="-1" autocomplete="off">
+          </div>
           <p class="contact-form__privacy">We only use your details to respond to your enquiry. Read our <a href="privacy.html">Privacy Policy</a>.</p>
           <p class="contact-form__error js-contact-error" hidden role="alert" aria-live="assertive">We couldn&rsquo;t send your message just now. Please try again or email <a href="mailto:emnet@emnetcm.com">emnet@emnetcm.com</a>.</p>
           <p class="contact-form__confirmation js-contact-confirmation" hidden role="status" aria-live="polite">Thank you, we&rsquo;ll be in touch shortly.</p>
