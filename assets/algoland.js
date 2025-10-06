@@ -13,7 +13,7 @@
   const prizeModal = createPrizeModal();
 
   const weeksConfig = [
-    { week: 1, assetId: '3215542832', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-22' },
+    { week: 1, assetId: '3215542831', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-22' },
     { week: 2, assetId: '3215542840', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-29' },
     { week: 3, assetId: '3215542836', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
     { week: 4, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-13' },
