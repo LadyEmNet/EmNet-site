@@ -5,7 +5,6 @@ import NodeCache from 'node-cache';
 import { performance } from 'node:perf_hooks';
 
 import { APP_ID, DISTRIBUTOR_ALLOWLIST, WEEK_CONFIG, getAllowlistForAsset } from './config.js';
-import { getAllPrizes, getPrizeForWeek } from './prizeStore.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -60,14 +59,6 @@ const assetMetadataCache = new NodeCache({
   checkperiod: 60 * 60,
   useClones: false,
 });
-
-const assetHoldersCache = new NodeCache({
-  stdTTL: 0,
-  checkperiod: 0,
-  useClones: false,
-});
-
-const MAX_HOLDER_CACHE_AGE_MS = Math.max(CACHE_TTL_SECONDS * 1000, 60 * 1000);
 
 function normalisePath(path) {
   if (!path.startsWith('/')) {
@@ -390,53 +381,11 @@ async function getCompletionsForAsset(assetId) {
   const cacheKey = `completions:${assetId}`;
   const cached = responseCache.get(cacheKey);
   try {
-    const holdersPayload = await getAssetHolders(assetId);
-    const payload = {
-      assetId: holdersPayload.assetId,
-      completions: Array.isArray(holdersPayload.holders) ? holdersPayload.holders.length : 0,
-      updatedAt: holdersPayload.updatedAt,
-      source: holdersPayload.source,
-      meta: holdersPayload.meta,
-    };
-    if (holdersPayload.stale) {
-      payload.stale = true;
-    }
-    responseCache.set(cacheKey, payload);
-    console.info('[Algoland API] Completions computed', {
-      assetId,
-      completions: payload.completions,
-      stale: Boolean(payload.stale),
-      scannedBalances: payload.meta?.scannedBalances,
-      durationMs: payload.meta?.durationMs,
-    });
-    return payload;
-  } catch (error) {
-    if (cached) {
-      console.warn('[Algoland API] Completions falling back to cache', {
-        assetId,
-        message: error.message,
-      });
-      return { ...cached, stale: true };
-    }
-    throw error;
-  }
-}
-
-async function getAssetHolders(assetId) {
-  const cacheKey = `holders:${assetId}`;
-  const cachedWrapper = assetHoldersCache.get(cacheKey);
-  const now = Date.now();
-  if (cachedWrapper && cachedWrapper.payload && typeof cachedWrapper.cachedAt === 'number') {
-    const age = now - cachedWrapper.cachedAt;
-    if (age <= MAX_HOLDER_CACHE_AGE_MS) {
-      return { ...cachedWrapper.payload };
-    }
-  }
-
-  try {
     const start = performance.now();
     const holders = new Set();
-    const { adminAddresses } = await getAssetMetadata(assetId);
+    const {
+      adminAddresses,
+    } = await getAssetMetadata(assetId);
 
     const excludedAddresses = new Set(
       getAllowlistForAsset(assetId)
@@ -479,36 +428,34 @@ async function getAssetHolders(assetId) {
     } while (nextToken);
 
     const durationMs = performance.now() - start;
-    const sortedHolders = Array.from(holders).sort();
     const payload = {
       assetId: Number.parseInt(assetId, 10),
-      holders: sortedHolders,
+      completions: holders.size,
       updatedAt: new Date().toISOString(),
       source: INDEXER_BASE,
       meta: {
         durationMs,
         pageCount,
         scannedBalances: accountCount,
-        uniqueHolders: sortedHolders.length,
+        uniqueHolders: holders.size,
       },
-      stale: false,
     };
-    assetHoldersCache.set(cacheKey, { payload, cachedAt: now });
-    console.info('[Algoland API] Asset holders enumerated', {
+    responseCache.set(cacheKey, payload);
+    console.info('[Algoland API] Completions computed', {
       assetId,
-      holders: sortedHolders.length,
+      completions: holders.size,
       pageCount,
       scannedBalances: accountCount,
       durationMs,
     });
     return payload;
   } catch (error) {
-    if (cachedWrapper && cachedWrapper.payload) {
-      console.warn('[Algoland API] Holder enumeration falling back to cache', {
+    if (cached) {
+      console.warn('[Algoland API] Completions falling back to cache', {
         assetId,
         message: error.message,
       });
-      return { ...cachedWrapper.payload, stale: true };
+      return { ...cached, stale: true };
     }
     throw error;
   }
@@ -547,87 +494,6 @@ app.get('/api/entrants', async (req, res) => {
     };
     if (payload.stale) {
       responseBody.stale = true;
-    }
-    res.json(responseBody);
-  } catch (error) {
-    sendCachedOrError(res, error);
-  }
-});
-
-app.get('/api/prizes', async (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  try {
-    const prizes = await getAllPrizes();
-    res.json({
-      weeks: prizes.map((prize) => ({
-        week: prize.week,
-        status: prize.status,
-        asa: prize.asa,
-        assetId: prize.assetId ?? null,
-        image: prize.image ?? null,
-      })),
-    });
-  } catch (error) {
-    console.error('[Algoland API] Failed to load prize configuration', { message: error.message });
-    res.status(500).json({
-      error: 'prize_config_unavailable',
-      message: 'Prize configuration is currently unavailable. Please retry shortly.',
-    });
-  }
-});
-
-app.get('/api/prizes/:week', async (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  const weekParam = req.params.week;
-  let prize;
-  try {
-    prize = await getPrizeForWeek(weekParam);
-  } catch (error) {
-    console.error('[Algoland API] Failed to read prize configuration', { message: error.message });
-    res.status(500).json({
-      error: 'prize_config_unavailable',
-      message: 'Prize configuration is currently unavailable. Please retry shortly.',
-    });
-    return;
-  }
-
-  if (!prize) {
-    res.status(400).json({ error: 'invalid_week', message: 'Week must be between 1 and 13.' });
-    return;
-  }
-
-  if (!prize.assetId || !prize.image) {
-    res.json({
-      week: prize.week,
-      status: 'coming-soon',
-      asa: prize.asa,
-      assetId: prize.assetId ?? null,
-      image: prize.image ?? null,
-      message: 'Prize details coming soon. Check back soon.',
-    });
-    return;
-  }
-
-  try {
-    const holdersPayload = await getAssetHolders(prize.assetId);
-    const winners = Array.isArray(holdersPayload.holders) ? holdersPayload.holders : [];
-    const responseBody = {
-      week: prize.week,
-      status: 'available',
-      asa: prize.asa,
-      assetId: prize.assetId,
-      image: prize.image,
-      winners,
-      winnersCount: winners.length,
-      updatedAt: holdersPayload.updatedAt,
-      source: holdersPayload.source,
-    };
-    if (holdersPayload.meta) {
-      responseBody.meta = holdersPayload.meta;
-    }
-    if (holdersPayload.stale) {
-      responseBody.stale = true;
-      responseBody.status = 'stale';
     }
     res.json(responseBody);
   } catch (error) {
