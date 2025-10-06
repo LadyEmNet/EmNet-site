@@ -14,7 +14,7 @@
   const weeksConfig = [
     { week: 1, assetId: '3215542831', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-22' },
     { week: 2, assetId: '3215542840', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-29' },
-    { week: 3, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
+    { week: 3, assetId: '3215542836', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
     { week: 4, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-13' },
     { week: 5, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
     { week: 6, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
