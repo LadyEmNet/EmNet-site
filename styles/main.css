@@ -1036,6 +1036,19 @@ body.about-page .hero-logo {
   overflow: hidden;
 }
 
+.contact-form__honeypot input,
+.contact-form__honeypot label {
+  display: block;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .individual-services ul {
   list-style: none;
   margin: 24px 0 0;
