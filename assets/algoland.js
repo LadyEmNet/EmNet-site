@@ -776,7 +776,7 @@
 
       const message = document.createElement('p');
       message.className = 'prize-modal__message';
-      message.textContent = `Congratulations to our Week ${week} prize winners!`;
+      message.textContent = `Congratulations to the Week ${week} prize winners!`;
       fragment.appendChild(message);
 
       const winnersHeading = document.createElement('h3');
