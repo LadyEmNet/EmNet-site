@@ -412,20 +412,36 @@ if (window.top !== window.self) {
 (function () {
   const banner = document.querySelector('.js-cookie-banner');
   const acceptButton = banner ? banner.querySelector('.js-cookie-accept') : null;
+  const declineButton = banner ? banner.querySelector('.js-cookie-decline') : null;
   const storageKey = 'emnetCookieConsent';
   const root = document.documentElement;
 
-  if (!banner || !acceptButton) {
+  if (!banner || !acceptButton || !declineButton) {
     return;
   }
 
-  let hasConsent = false;
+  let storedPreference = null;
 
   try {
-    hasConsent = window.localStorage.getItem(storageKey) === 'true';
+    storedPreference = window.localStorage.getItem(storageKey);
   } catch (error) {
-    hasConsent = false;
+    storedPreference = null;
   }
+
+  const persistPreference = (value) => {
+    try {
+      window.localStorage.setItem(storageKey, value);
+    } catch (error) {
+      // Ignore storage errors and continue closing the banner.
+    }
+  };
+
+  if (storedPreference === 'true') {
+    persistPreference('accepted');
+    storedPreference = 'accepted';
+  }
+
+  const hasDecision = storedPreference === 'accepted' || storedPreference === 'declined';
 
   const updateBannerOffset = () => {
     if (!banner.classList.contains('is-visible')) {
@@ -448,16 +464,17 @@ if (window.top !== window.self) {
     document.body.classList.add('cookie-banner-visible');
   };
 
-  if (!hasConsent) {
+  if (!hasDecision) {
     showBanner();
   }
 
   acceptButton.addEventListener('click', () => {
-    try {
-      window.localStorage.setItem(storageKey, 'true');
-    } catch (error) {
-      // Ignore storage errors and continue closing the banner.
-    }
+    persistPreference('accepted');
+    hideBanner();
+  });
+
+  declineButton.addEventListener('click', () => {
+    persistPreference('declined');
     hideBanner();
   });
 

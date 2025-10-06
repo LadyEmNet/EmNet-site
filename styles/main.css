@@ -1882,12 +1882,6 @@ body.cookie-banner-visible {
   color: #f0f0f0;
 }
 
-.cookie-banner__note {
-  display: block;
-  margin-top: 8px;
-  color: #d8d8d8;
-}
-
 .cookie-banner__message a {
   color: #ff2ebd;
   text-decoration: underline;
