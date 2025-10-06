@@ -33,6 +33,6 @@ The service listens on `http://localhost:3000` by default. Configure the followi
 4. After deployment succeeds, verify:
    - `/api/ping` responds with service metadata.
    - `/api/entrants` returns the entrants count and timestamp.
-   - `/api/completions?asset=3215542832` returns the completions count for week 1.
+  - `/api/completions?asset=3215542831` returns the completions count for week 1.
 
 Remember to update the static site configuration so `/algoland` fetches data from the deployed Render URL.
