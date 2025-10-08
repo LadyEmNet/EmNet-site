@@ -2293,6 +2293,30 @@ body.lookup-modal-open {
   letter-spacing: 0.05em;
 }
 
+.lookup-modal__referral-tag--interactive {
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(83, 240, 227, 0.16);
+  border-color: rgba(83, 240, 227, 0.38);
+  color: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  line-height: 1.2;
+}
+
+.lookup-modal__referral-tag--interactive:hover,
+.lookup-modal__referral-tag--interactive:focus-visible {
+  background: rgba(83, 240, 227, 0.24);
+  border-color: rgba(83, 240, 227, 0.6);
+  color: #ffffff;
+}
+
+.lookup-modal__referral-tag--interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(83, 240, 227, 0.35);
+}
+
 .lookup-modal__section--highlight {
   background: rgba(22, 30, 48, 0.85);
   border-color: rgba(83, 240, 227, 0.28);

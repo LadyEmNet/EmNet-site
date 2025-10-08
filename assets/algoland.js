@@ -10,6 +10,7 @@
   const ONE_WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
   const DEFAULT_DISTRIBUTOR = 'HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM';
   const APP_ID = 3215540125;
+  const ALGOLAND_ADDRESS_PATTERN = /^[A-Z2-7]{58}$/;
   const prizeModal = createPrizeModal();
   const lookupModal = createLookupModal(root);
 
@@ -127,25 +128,7 @@
       const searchValue = parsed.value;
 
       try {
-        const response = await window.fetch(
-          buildApiUrl(`/api/algoland-stats?address=${encodeURIComponent(searchValue)}`),
-          { headers: { Accept: 'application/json' } }
-        );
-
-        let payload = null;
-        try {
-          payload = await response.json();
-        } catch (parseError) {
-          payload = null;
-        }
-
-        if (!response.ok || payload === null || typeof payload !== 'object') {
-          const message = payload && typeof payload.message === 'string' && payload.message.length
-            ? payload.message
-            : 'Unable to find that profile. Check the address or ID and try again.';
-          throw new Error(message);
-        }
-
+        const payload = await fetchProfileLookup(searchValue);
         lookupModal.open({ query: searchValue, type: parsed.type, data: payload });
         setSearchFeedback(feedback, `Showing results for ${searchValue}.`, 'success');
       } catch (error) {
@@ -165,6 +148,34 @@
     });
   }
 
+  async function fetchProfileLookup(searchValue) {
+    const response = await window.fetch(
+      buildApiUrl(`/api/algoland-stats?address=${encodeURIComponent(searchValue)}`),
+      { headers: { Accept: 'application/json' } }
+    );
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (parseError) {
+      payload = null;
+    }
+
+    if (!response.ok || payload === null || typeof payload !== 'object') {
+      const message = payload && typeof payload.message === 'string' && payload.message.length
+        ? payload.message
+        : 'Unable to find that profile. Check the address or ID and try again.';
+      const error = new Error(message);
+      if (payload && typeof payload.error === 'string') {
+        error.code = payload.error;
+      }
+      error.status = response.status;
+      throw error;
+    }
+
+    return payload;
+  }
+
   function parseSearchInput(rawValue) {
     const trimmed = typeof rawValue === 'string' ? rawValue.trim() : '';
     if (trimmed.length === 0) {
@@ -173,12 +184,23 @@
     if (/^\d+$/.test(trimmed)) {
       return { value: trimmed, type: 'id' };
     }
-    const normalised = trimmed.toUpperCase();
-    const algorandPattern = /^[A-Z2-7]{58}$/;
-    if (algorandPattern.test(normalised)) {
-      return { value: normalised, type: 'address' };
+    const normalisedAddress = normaliseAlgorandAddress(trimmed);
+    if (normalisedAddress) {
+      return { value: normalisedAddress, type: 'address' };
     }
     return { error: 'Enter a 58-character Algorand address or numeric ID.' };
+  }
+
+  function normaliseAlgorandAddress(value) {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const uppercased = trimmed.toUpperCase();
+    return ALGOLAND_ADDRESS_PATTERN.test(uppercased) ? uppercased : null;
   }
 
   function setSearchFeedback(element, message, status) {
@@ -861,8 +883,9 @@
     );
     const completedQuests = normaliseListItems(data.completedQuests || data.quests);
     const completedChallenges = normaliseListItems(data.completedChallenges || data.challenges);
-    const referralsList = normaliseListItems(data.referrals);
+    const referralDetails = buildReferralDetails(data);
     const referralsProvided = Array.isArray(data.referrals)
+      || Array.isArray(data.referralsRelativeIds)
       || typeof data.referrals === 'number'
       || typeof data.referralsCount === 'number'
       || typeof data.referralCount === 'number';
@@ -871,7 +894,8 @@
       data.referralCount,
       typeof data.referrals === 'number' ? data.referrals : null,
       referralsProvided && Array.isArray(data.referrals) ? data.referrals.length : null,
-      referralsProvided ? referralsList.length : null
+      referralsProvided && Array.isArray(data.referralsRelativeIds) ? data.referralsRelativeIds.length : null,
+      referralsProvided ? referralDetails.length : null
     );
     const referralsSummary = referralsCount === null
       ? (referralsProvided ? '0' : 'Not available')
@@ -887,7 +911,7 @@
       || (typeof redeemedPoints === 'number' && redeemedPoints > 0)
       || completedQuests.length > 0
       || completedChallenges.length > 0
-      || referralsList.length > 0
+      || referralDetails.length > 0
       || (typeof weeklyDrawDetails.totalCount === 'number' && weeklyDrawDetails.totalCount > 0)
       || (typeof weeklyDrawDetails.eligibleCount === 'number' && weeklyDrawDetails.eligibleCount > 0);
 
@@ -932,7 +956,7 @@
       ? 'No referrals recorded yet.'
       : 'Referral data is not available yet.';
     container.appendChild(
-      createReferralSection('Referrals', referralsList, referralsEmptyMessage, {
+      createReferralSection('Referrals', referralDetails, referralsEmptyMessage, {
         icon: '👥',
         total: referralsCount,
       })
@@ -1177,9 +1201,27 @@
       const wrapper = document.createElement('div');
       wrapper.className = 'lookup-modal__referral-tags';
       referrals.forEach((referral) => {
-        const tag = document.createElement('span');
+        if (!referral || typeof referral.label !== 'string' || referral.label.trim().length === 0) {
+          return;
+        }
+        const isInteractive = typeof referral.lookupValue === 'string'
+          && referral.lookupValue.length > 0
+          && (referral.lookupType === 'address' || referral.lookupType === 'id');
+        const tag = document.createElement(isInteractive ? 'button' : 'span');
         tag.className = 'lookup-modal__referral-tag';
-        tag.textContent = referral;
+        tag.textContent = referral.label;
+        if (isInteractive) {
+          tag.type = 'button';
+          tag.classList.add('lookup-modal__referral-tag--interactive');
+          tag.dataset.lookupReferralValue = referral.lookupValue;
+          tag.dataset.lookupReferralType = referral.lookupType;
+          const title = `View progress for ${referral.label}`;
+          tag.title = title;
+          tag.setAttribute('aria-label', title);
+          tag.addEventListener('click', () => {
+            handleReferralTagClick(referral);
+          });
+        }
         wrapper.appendChild(tag);
       });
       collapsible.appendChild(wrapper);
@@ -1188,6 +1230,165 @@
       section.appendChild(createLookupText(emptyMessage, 'lookup-modal__empty'));
     }
     return section;
+  }
+
+  async function handleReferralTagClick(referral) {
+    if (!referral || typeof referral.lookupValue !== 'string' || !referral.lookupValue) {
+      return;
+    }
+    const lookupValue = referral.lookupValue;
+    const lookupType = referral.lookupType === 'id' ? 'id' : 'address';
+    const feedbackElement = root.querySelector('[data-algoland-search-feedback]');
+    const button = root.querySelector('[data-algoland-search-button]');
+    const input = root.querySelector('[data-algoland-search-input]');
+    if (input) {
+      input.value = lookupValue;
+    }
+
+    setSearchLoading(button, true);
+    if (feedbackElement) {
+      setSearchFeedback(feedbackElement, 'Searching…');
+    }
+
+    const loadingMessage = referral.label
+      ? `Loading progress for ${referral.label}…`
+      : 'Loading referral progress…';
+    lookupModal.open({
+      query: lookupValue,
+      type: lookupType,
+      data: { statusMessage: loadingMessage },
+    });
+
+    try {
+      const payload = await fetchProfileLookup(lookupValue);
+      lookupModal.open({ query: lookupValue, type: lookupType, data: payload });
+      if (feedbackElement) {
+        setSearchFeedback(feedbackElement, `Showing results for ${lookupValue}.`, 'success');
+      }
+    } catch (error) {
+      const defaultMessage = 'Unable to load that referral profile. Please try again.';
+      const message = error && typeof error.message === 'string' && error.message.length
+        ? error.message
+        : defaultMessage;
+      console.warn('[Algoland] Failed to load referral profile', {
+        referral: referral.label,
+        error,
+      });
+      lookupModal.open({ query: lookupValue, type: lookupType, data: { statusMessage: message } });
+      if (feedbackElement) {
+        setSearchFeedback(feedbackElement, message, 'error');
+      }
+    } finally {
+      setSearchLoading(button, false);
+    }
+  }
+
+  function buildReferralDetails(data) {
+    if (!data || typeof data !== 'object') {
+      return [];
+    }
+    const rawReferrals = Array.isArray(data.referrals) ? data.referrals : [];
+    const relativeIds = Array.isArray(data.referralsRelativeIds)
+      ? data.referralsRelativeIds.filter((value) => typeof value === 'number' && Number.isFinite(value))
+      : [];
+    const maxLength = Math.max(rawReferrals.length, relativeIds.length);
+    const details = [];
+    for (let index = 0; index < maxLength; index += 1) {
+      const rawItem = index < rawReferrals.length ? rawReferrals[index] : undefined;
+      const relativeId = index < relativeIds.length ? relativeIds[index] : undefined;
+      const label = formatReferralLabel(rawItem, relativeId);
+      if (!label) {
+        continue;
+      }
+      const descriptor = { label };
+      const query = getReferralQueryFromValue(rawItem, relativeId);
+      if (typeof query === 'string' && query.trim().length > 0) {
+        const parsed = parseSearchInput(query);
+        if (!parsed.error) {
+          descriptor.lookupValue = parsed.value;
+          descriptor.lookupType = parsed.type;
+        } else {
+          const normalisedAddress = normaliseAlgorandAddress(query);
+          if (normalisedAddress) {
+            descriptor.lookupValue = normalisedAddress;
+            descriptor.lookupType = 'address';
+          } else {
+            const numericQuery = query.trim();
+            if (/^\d+$/.test(numericQuery)) {
+              descriptor.lookupValue = numericQuery;
+              descriptor.lookupType = 'id';
+            }
+          }
+        }
+      }
+      details.push(descriptor);
+    }
+    return details;
+  }
+
+  function formatReferralLabel(rawItem, relativeId) {
+    const labelCandidate = normaliseListItem(rawItem);
+    if (typeof labelCandidate === 'string' && labelCandidate.trim().length > 0) {
+      return labelCandidate.trim();
+    }
+    if (typeof rawItem === 'string' && rawItem.trim().length > 0) {
+      return rawItem.trim();
+    }
+    if (typeof rawItem === 'number' && Number.isFinite(rawItem)) {
+      return numberFormatter.format(rawItem);
+    }
+    if (typeof relativeId === 'number' && Number.isFinite(relativeId)) {
+      return `Relative ID ${numberFormatter.format(relativeId)}`;
+    }
+    return null;
+  }
+
+  function getReferralQueryFromValue(value, fallbackId, depth = 0) {
+    if (depth > 5) {
+      return null;
+    }
+    if (typeof value === 'string') {
+      const normalisedAddress = normaliseAlgorandAddress(value);
+      if (normalisedAddress) {
+        return normalisedAddress;
+      }
+      const digitsMatch = value.match(/\d+/);
+      if (digitsMatch) {
+        return digitsMatch[0];
+      }
+      return typeof fallbackId === 'number' && Number.isFinite(fallbackId)
+        ? String(Math.trunc(fallbackId))
+        : null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(Math.trunc(value));
+    }
+    if (typeof value === 'object' && value !== null) {
+      if (typeof value.address === 'string') {
+        const addressCandidate = normaliseAlgorandAddress(value.address);
+        if (addressCandidate) {
+          return addressCandidate;
+        }
+      }
+      const candidateKeys = ['value', 'relativeId', 'id', 'referralId', 'userId', 'wallet'];
+      for (const key of candidateKeys) {
+        if (!Object.prototype.hasOwnProperty.call(value, key)) {
+          continue;
+        }
+        const candidate = value[key];
+        if (candidate === value) {
+          continue;
+        }
+        const resolved = getReferralQueryFromValue(candidate, fallbackId, depth + 1);
+        if (resolved) {
+          return resolved;
+        }
+      }
+    }
+    if (typeof fallbackId === 'number' && Number.isFinite(fallbackId)) {
+      return String(Math.trunc(fallbackId));
+    }
+    return null;
   }
 
   function createLookupList(items, emptyMessage = 'No data available.') {
