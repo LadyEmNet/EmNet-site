@@ -91,12 +91,52 @@ const REFERRAL_COUNT_KEYS = [
 const WEEKLY_DRAW_KEYS = [
   'weeklydraws',
   'weekly_draws',
+  'weeklydraweligibility',
+  'weekly_draw_eligibility',
   'weeklyentries',
   'drawentries',
   'weeklydrawentries',
   'draws',
   'weekly',
   'draw_history',
+];
+
+const AVAILABLE_DRAW_PRIZE_KEYS = [
+  'availabledrawprizeassetids',
+  'availableprizes',
+  'availabledrawprizes',
+  'availableprizeassetids',
+  'availableprizeids',
+  'availableassets',
+  'available',
+];
+
+const CLAIMED_DRAW_PRIZE_KEYS = [
+  'claimeddrawprizeassetids',
+  'claimedprizes',
+  'claimeddrawprizes',
+  'claimedprizeassetids',
+  'claimedprizeids',
+  'claimedassets',
+  'claimed',
+];
+
+const COMPLETABLE_CHALLENGE_KEYS = [
+  'completablechallenges',
+  'availablechallenges',
+  'challengeoptions',
+  'challenge_pool',
+  'eligiblechallenges',
+];
+
+const WEEKLY_DRAW_ENTRY_KEYS = [
+  'weeklydrawentries',
+  'weeklyentries',
+  'entriescount',
+  'entrycount',
+  'totalentries',
+  'drawentries',
+  'entrytotal',
 ];
 
 const CHALLENGES_PER_WEEK = 3;
@@ -1090,18 +1130,40 @@ async function fetchLandsInspectorProfile(address) {
   const url = new URL('/api/user', `${LANDS_INSPECTOR_BASE}/`);
   url.searchParams.set('user', address);
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-    },
-  });
+  const start = performance.now();
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+      },
+    });
+  } catch (error) {
+    console.error('[Algoland API] Lands Inspector request failed', {
+      address,
+      message: error.message,
+    });
+    throw error;
+  }
+
+  const durationMs = performance.now() - start;
 
   if (response.status === 404 || response.status === 204) {
+    console.info('[Algoland API] Lands Inspector returned no content', {
+      address,
+      status: response.status,
+      durationMs,
+    });
     return null;
   }
 
   if (!response.ok) {
+    console.error('[Algoland API] Lands Inspector responded with error', {
+      address,
+      status: response.status,
+      durationMs,
+    });
     const message = `Lands Inspector responded with status ${response.status}`;
     throw new Error(message);
   }
@@ -1109,11 +1171,21 @@ async function fetchLandsInspectorProfile(address) {
   try {
     const payload = await response.json();
     if (!payload || typeof payload !== 'object') {
+      console.info('[Algoland API] Lands Inspector provided empty payload', {
+        address,
+        durationMs,
+      });
       return null;
     }
+    console.info('[Algoland API] Lands Inspector payload received', {
+      address,
+      durationMs,
+      keys: Object.keys(payload),
+    });
     return payload;
   } catch (error) {
     console.warn('[Algoland API] Failed to parse Lands Inspector payload', {
+      address,
       message: error.message,
     });
     return null;
@@ -1129,24 +1201,130 @@ function normaliseInspectorNumber(value) {
 }
 
 function normaliseInspectorList(value) {
-  if (!Array.isArray(value)) {
+  if (value === null || value === undefined) {
     return [];
   }
-  return value
-    .map((item) => {
-      if (item === null || item === undefined) {
+  if (value instanceof Set) {
+    return normaliseInspectorList(Array.from(value));
+  }
+  if (Array.isArray(value) || typeof value === 'string') {
+    return coerceListValue(value)
+      .map((item) => {
+        if (item === null || item === undefined) {
+          return null;
+        }
+        if (typeof item === 'string') {
+          const trimmed = item.trim();
+          return trimmed.length > 0 ? trimmed : null;
+        }
+        if (typeof item === 'number' && Number.isFinite(item)) {
+          return item;
+        }
         return null;
+      })
+      .filter((item) => item !== null);
+  }
+  if (typeof value === 'object') {
+    const candidateKeys = [
+      'list',
+      'values',
+      'items',
+      'entries',
+      'weeks',
+      'history',
+      'ids',
+      'addresses',
+      'records',
+      'data',
+      'prizes',
+    ];
+    for (const key of candidateKeys) {
+      if (key in value) {
+        const nested = normaliseInspectorList(value[key]);
+        if (nested.length > 0) {
+          return nested;
+        }
       }
-      if (typeof item === 'string') {
-        const trimmed = item.trim();
-        return trimmed.length > 0 ? trimmed : null;
+    }
+  }
+  return [];
+}
+
+function normaliseInspectorKeyName(name) {
+  if (typeof name !== 'string') {
+    return '';
+  }
+  return name.replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function extractInspectorValue(payload, keyCandidates) {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+  const queue = [payload];
+  const visited = new Set();
+  const normalisedCandidates = keyCandidates
+    .map((candidate) => normaliseInspectorKeyName(candidate))
+    .filter((candidate) => candidate.length > 0);
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+    const lookup = new Map();
+    Object.entries(current).forEach(([key, value]) => {
+      const normalisedKey = normaliseInspectorKeyName(key);
+      if (normalisedKey && !lookup.has(normalisedKey)) {
+        lookup.set(normalisedKey, value);
       }
-      if (typeof item === 'number' && Number.isFinite(item)) {
-        return item;
+    });
+    for (const candidate of normalisedCandidates) {
+      if (lookup.has(candidate)) {
+        return lookup.get(candidate);
       }
-      return null;
-    })
-    .filter((item) => item !== null);
+    }
+    Object.values(current).forEach((value) => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        queue.push(value);
+      }
+    });
+  }
+  return undefined;
+}
+
+function pickFirstInspectorList(...candidates) {
+  for (const candidate of candidates) {
+    const list = normaliseInspectorList(candidate);
+    if (list.length > 0) {
+      return list;
+    }
+  }
+  return [];
+}
+
+function summariseInspectorPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+  const summary = {};
+  Object.entries(payload).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      summary[key] = `array(${value.length})`;
+      return;
+    }
+    if (value && typeof value === 'object') {
+      summary[key] = `object(${Object.keys(value).length})`;
+      return;
+    }
+    if (value === null) {
+      summary[key] = 'null';
+      return;
+    }
+    summary[key] = typeof value;
+  });
+  return summary;
 }
 
 function createEmptyProfile(address) {
@@ -1185,20 +1363,57 @@ function createEmptyProfile(address) {
 
 function buildInspectorProfile(address, payload) {
   const now = new Date().toISOString();
-  const relativeId = toSafeInteger(payload?.relativeId);
-  const referrerId = toSafeInteger(payload?.referrerId);
-  const points = normaliseInspectorNumber(payload?.points) ?? 0;
-  const redeemedPoints = normaliseInspectorNumber(payload?.redeemedPoints) ?? 0;
-  const completedQuests = normaliseInspectorList(payload?.completedQuests);
-  const completedChallenges = normaliseInspectorList(payload?.completedChallenges);
-  const completableChallenges = normaliseInspectorList(payload?.completableChallenges);
-  const weeklyDrawEligibility = normaliseInspectorList(payload?.weeklyDrawEligibility);
-  const availablePrizes = normaliseInspectorList(payload?.availableDrawPrizeAssetIds);
-  const claimedPrizes = normaliseInspectorList(payload?.claimedDrawPrizeAssetIds);
-  const referrals = normaliseInspectorList(payload?.referrals);
-  const referralsCountCandidate = normaliseInspectorNumber(
-    payload?.referralsCount ?? payload?.referralCount,
+  const relativeId = toSafeInteger(extractInspectorValue(payload, RELATIVE_ID_KEYS));
+  const referrerId = toSafeInteger(extractInspectorValue(payload, REFERRER_ID_KEYS));
+  const points = normaliseInspectorNumber(extractInspectorValue(payload, POINT_KEYS)) ?? 0;
+  const redeemedPoints = normaliseInspectorNumber(
+    extractInspectorValue(payload, REDEEMED_POINT_KEYS),
+  ) ?? 0;
+  const completedQuests = normaliseInspectorList(extractInspectorValue(payload, QUEST_LIST_KEYS));
+  const completedChallenges = normaliseInspectorList(
+    extractInspectorValue(payload, CHALLENGE_LIST_KEYS),
   );
+  const completableChallenges = normaliseInspectorList(
+    extractInspectorValue(payload, COMPLETABLE_CHALLENGE_KEYS),
+  );
+  const weeklyDrawEligibilitySource = extractInspectorValue(payload, WEEKLY_DRAW_KEYS);
+  const weeklyDrawsRaw = extractInspectorValue(payload, ['weeklydraws']);
+  const weeklyDrawContainer = [weeklyDrawsRaw, weeklyDrawEligibilitySource]
+    .find((value) => value && typeof value === 'object' && !Array.isArray(value))
+    || null;
+  const weeklyDrawEligibility = pickFirstInspectorList(
+    weeklyDrawContainer?.weeks,
+    weeklyDrawContainer?.list,
+    weeklyDrawContainer?.history,
+    weeklyDrawEligibilitySource,
+    weeklyDrawsRaw,
+  );
+  const availablePrizes = pickFirstInspectorList(
+    extractInspectorValue(payload, AVAILABLE_DRAW_PRIZE_KEYS),
+    weeklyDrawContainer?.available,
+    weeklyDrawContainer?.availablePrizes,
+    weeklyDrawContainer?.availablePrizeAssetIds,
+  );
+  const claimedPrizes = pickFirstInspectorList(
+    extractInspectorValue(payload, CLAIMED_DRAW_PRIZE_KEYS),
+    weeklyDrawContainer?.claimed,
+    weeklyDrawContainer?.claimedPrizes,
+    weeklyDrawContainer?.claimedPrizeAssetIds,
+  );
+  const referrals = pickFirstInspectorList(extractInspectorValue(payload, REFERRAL_LIST_KEYS));
+  const referralsCountCandidate = normaliseInspectorNumber(
+    extractInspectorValue(payload, REFERRAL_COUNT_KEYS),
+  );
+  const weeklyDrawEntriesCandidate = normaliseInspectorNumber(
+    extractInspectorValue(payload, WEEKLY_DRAW_ENTRY_KEYS)
+      ?? weeklyDrawContainer?.entries
+      ?? weeklyDrawContainer?.count
+      ?? weeklyDrawContainer?.total,
+  );
+  const weeklyDrawEntries = weeklyDrawEntriesCandidate ?? weeklyDrawEligibility.length;
+  const weeklyEligible = typeof weeklyDrawContainer?.eligible === 'boolean'
+    ? weeklyDrawContainer.eligible
+    : weeklyDrawEligibility.length > 0;
 
   const hasParticipation = Boolean(
     (points ?? 0) > 0
@@ -1207,6 +1422,7 @@ function buildInspectorProfile(address, payload) {
       || completedChallenges.length > 0
       || referrals.length > 0
       || weeklyDrawEligibility.length > 0
+      || weeklyDrawEntries > 0
       || availablePrizes.length > 0
       || claimedPrizes.length > 0,
   );
@@ -1225,8 +1441,8 @@ function buildInspectorProfile(address, payload) {
   }
 
   const weeklyDraws = {
-    eligible: weeklyDrawEligibility.length > 0,
-    entries: weeklyDrawEligibility.length,
+    eligible: weeklyEligible,
+    entries: weeklyDrawEntries,
     weeks: weeklyDrawEligibility,
     availablePrizeAssetIds: availablePrizes,
     claimedPrizeAssetIds: claimedPrizes,
@@ -1261,6 +1477,23 @@ function buildInspectorProfile(address, payload) {
     fetchedAt: now,
     raw: payload,
   };
+
+  if (!hasParticipation) {
+    console.info('[Algoland API] Lands Inspector payload contained no recognised participation data', {
+      address,
+      derived: {
+        points,
+        redeemedPoints,
+        completedQuests: completedQuests.length,
+        completedChallenges: completedChallenges.length,
+        weeklyDrawWeeks: weeklyDrawEligibility.length,
+        referrals: referrals.length,
+        availablePrizes: availablePrizes.length,
+        claimedPrizes: claimedPrizes.length,
+      },
+      summary: summariseInspectorPayload(payload),
+    });
+  }
 
   return profile;
 }
