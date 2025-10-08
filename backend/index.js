@@ -1257,6 +1257,19 @@ function normaliseInspectorKeyName(name) {
   return name.replace(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
+function isMeaningfulInspectorValue(value) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0;
+  }
+  return true;
+}
+
 function extractInspectorValue(payload, keyCandidates) {
   if (!payload || typeof payload !== 'object') {
     return undefined;
@@ -1266,6 +1279,8 @@ function extractInspectorValue(payload, keyCandidates) {
   const normalisedCandidates = keyCandidates
     .map((candidate) => normaliseInspectorKeyName(candidate))
     .filter((candidate) => candidate.length > 0);
+  let fallbackValue;
+  let hasFallback = false;
 
   while (queue.length > 0) {
     const current = queue.shift();
@@ -1282,14 +1297,34 @@ function extractInspectorValue(payload, keyCandidates) {
     });
     for (const candidate of normalisedCandidates) {
       if (lookup.has(candidate)) {
-        return lookup.get(candidate);
+        const value = lookup.get(candidate);
+        if (isMeaningfulInspectorValue(value)) {
+          return value;
+        }
+        if (!hasFallback) {
+          fallbackValue = value;
+          hasFallback = true;
+        }
       }
     }
     Object.values(current).forEach((value) => {
-      if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (Array.isArray(value)) {
+        value
+          .filter((item) => item && typeof item === 'object')
+          .forEach((item) => {
+            if (!visited.has(item)) {
+              queue.push(item);
+            }
+          });
+        return;
+      }
+      if (value && typeof value === 'object') {
         queue.push(value);
       }
     });
+  }
+  if (hasFallback) {
+    return fallbackValue;
   }
   return undefined;
 }
@@ -1871,9 +1906,18 @@ app.use((req, res) => {
   res.status(404).json({ error: 'not_found' });
 });
 
-app.listen(PORT, () => {
-  console.info(`[Algoland API] Service listening on port ${PORT}`, {
-    indexerBase: INDEXER_BASE,
-    cacheTtlSeconds: CACHE_TTL_SECONDS,
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.info(`[Algoland API] Service listening on port ${PORT}`, {
+      indexerBase: INDEXER_BASE,
+      cacheTtlSeconds: CACHE_TTL_SECONDS,
+    });
   });
-});
+}
+
+export default app;
+export {
+  extractInspectorValue,
+  buildInspectorProfile,
+  createEmptyProfile,
+};
