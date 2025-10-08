@@ -437,11 +437,71 @@ function extractFirstValue(entries, keys) {
     return undefined;
   }
   const searchKeys = Array.isArray(keys) ? keys : [keys];
-  for (const key of searchKeys) {
-    const lowerKey = normaliseKeyName(key);
-    const match = entries.find((entry) => entry.lowerKey === lowerKey);
-    if (match) {
-      return match.value;
+  const lowerKeys = new Set(searchKeys.map((key) => normaliseKeyName(key)));
+  for (const entry of entries) {
+    if (lowerKeys.has(entry.lowerKey)) {
+      return entry.value;
+    }
+  }
+  return undefined;
+}
+
+function extractNestedValue(value, keys, depth = 0) {
+  if (value === null || value === undefined || depth > 6) {
+    return undefined;
+  }
+  const searchKeys = Array.isArray(keys) ? keys : [keys];
+  const lowerKeys = new Set(searchKeys.map((key) => normaliseKeyName(key)));
+
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const nested = extractNestedValue(item, searchKeys, depth + 1);
+        if (nested !== undefined) {
+          return nested;
+        }
+      }
+      return undefined;
+    }
+
+    for (const [key, candidate] of Object.entries(value)) {
+      const lowerKey = normaliseKeyName(key);
+      if (lowerKeys.has(lowerKey)) {
+        return candidate;
+      }
+    }
+
+    for (const candidate of Object.values(value)) {
+      const nested = extractNestedValue(candidate, searchKeys, depth + 1);
+      if (nested !== undefined) {
+        return nested;
+      }
+    }
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = tryParseJson(value.trim());
+    if (parsed !== undefined) {
+      return extractNestedValue(parsed, searchKeys, depth + 1);
+    }
+  }
+
+  return undefined;
+}
+
+function extractProfileValue(entries, keys) {
+  const direct = extractFirstValue(entries, keys);
+  if (direct !== undefined) {
+    return direct;
+  }
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return undefined;
+  }
+  for (const entry of entries) {
+    const nested = extractNestedValue(entry.value, keys);
+    if (nested !== undefined) {
+      return nested;
     }
   }
   return undefined;
@@ -593,26 +653,26 @@ function buildProfileFromEntries(entries, context = {}) {
     rawState[entry.key] = entry.value;
   });
 
-  const relativeId = coerceNumericValue(extractFirstValue(entries, RELATIVE_ID_KEYS));
-  const referrerId = coerceNumericValue(extractFirstValue(entries, REFERRER_ID_KEYS));
-  const pointsValue = extractFirstValue(entries, POINT_KEYS);
-  const redeemedValue = extractFirstValue(entries, REDEEMED_POINT_KEYS);
-  const referralsValue = extractFirstValue(entries, REFERRAL_LIST_KEYS);
+  const relativeId = coerceNumericValue(extractProfileValue(entries, RELATIVE_ID_KEYS));
+  const referrerId = coerceNumericValue(extractProfileValue(entries, REFERRER_ID_KEYS));
+  const pointsValue = extractProfileValue(entries, POINT_KEYS);
+  const redeemedValue = extractProfileValue(entries, REDEEMED_POINT_KEYS);
+  const referralsValue = extractProfileValue(entries, REFERRAL_LIST_KEYS);
   const profile = {
     resolvedAddress: address || null,
     relativeId: relativeId ?? null,
     referrerId: referrerId ?? null,
     points: coerceNumericValue(pointsValue) ?? null,
     redeemedPoints: coerceNumericValue(redeemedValue) ?? null,
-    completedQuests: coerceListValue(extractFirstValue(entries, QUEST_LIST_KEYS)),
-    completedChallenges: coerceListValue(extractFirstValue(entries, CHALLENGE_LIST_KEYS)),
+    completedQuests: coerceListValue(extractProfileValue(entries, QUEST_LIST_KEYS)),
+    completedChallenges: coerceListValue(extractProfileValue(entries, CHALLENGE_LIST_KEYS)),
     referrals: coerceListValue(referralsValue),
-    weeklyDraws: normaliseWeeklyDrawState(extractFirstValue(entries, WEEKLY_DRAW_KEYS)),
+    weeklyDraws: normaliseWeeklyDrawState(extractProfileValue(entries, WEEKLY_DRAW_KEYS)),
     rawState,
     source: INDEXER_BASE,
   };
 
-  const referralsCountValue = extractFirstValue(entries, REFERRAL_COUNT_KEYS);
+  const referralsCountValue = extractProfileValue(entries, REFERRAL_COUNT_KEYS);
   const referralsCount = coerceNumericValue(referralsCountValue);
   if (referralsCount !== undefined) {
     profile.referralsCount = referralsCount;
@@ -905,17 +965,11 @@ async function getProfileForAddress(address) {
     ? account['apps-local-state']
     : [];
   const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
-  if (!appState || !Array.isArray(appState['key-value'])) {
+  if (!appState) {
     throw createProfileError('profile_not_found', 'That address has not opted into Algoland yet.', 404);
   }
-  const entries = decodeLocalStateEntries(appState['key-value']);
-  if (entries.length === 0) {
-    throw createProfileError(
-      'profile_not_ready',
-      'Algoland stats are not available for that address yet.',
-      404,
-    );
-  }
+  const keyValues = Array.isArray(appState['key-value']) ? appState['key-value'] : [];
+  const entries = decodeLocalStateEntries(keyValues);
 
   const baseProfile = buildProfileFromEntries(entries, { address: normalised });
   const lastRoundTime = toSafeInteger(account['last-round-time']);
