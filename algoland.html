@@ -94,12 +94,26 @@
     <section class="algoland-hero">
       <div class="algoland-hero__inner container">
         <div class="algoland-hero__copy">
-          <h1>Algoland - Competition tracker</h1>
+          <h1 class="algoland-hero__title">Algoland - Competition tracker</h1>
           <p class="section-lede">Have you joined Algoland yet? The Algorand Foundations 13 weeks of on-chain action. Prizes to be won every week and there are grand prizes too! Track your competition below with a live counter of how many have joined the party and how many have completed each quest.</p>
           <p>Ready to take part? Hit the button below to jump right in!</p>
           <div class="cta-actions">
             <a class="btn" href="https://www.algoland.co/?referralCode=107" target="_blank" rel="noopener">Join now</a>
             <a class="btn" href="https://www.algoland.co/info" target="_blank" rel="noopener">Learn more</a>
+          </div>
+          <div class="algoland-social" aria-label="Algoland community channels">
+            <a class="algoland-social__link" href="https://t.me/algorand" target="_blank" rel="noopener" aria-label="Open Algorand community Telegram">
+              <img class="algoland-social__icon" src="assets/tglogo.png" alt="Telegram" width="48" height="48" loading="lazy" decoding="async">
+              <img class="algoland-social__preview" src="assets/tgcomp.png" alt="" width="360" height="360" loading="lazy" decoding="async" aria-hidden="true">
+            </a>
+            <a class="algoland-social__link" href="https://www.reddit.com/r/algorand/" target="_blank" rel="noopener" aria-label="Open Algorand subreddit">
+              <img class="algoland-social__icon" src="assets/reddit.png" alt="Reddit" width="48" height="48" loading="lazy" decoding="async">
+              <img class="algoland-social__preview" src="assets/redditcomp.png" alt="" width="360" height="360" loading="lazy" decoding="async" aria-hidden="true">
+            </a>
+            <a class="algoland-social__link" href="https://x.com/algofoundation?s=21&amp;t=Ul2Oe5kYQwXq_TcMCRN0Wg" target="_blank" rel="noopener" aria-label="Open Algorand Foundation on X">
+              <img class="algoland-social__icon" src="assets/xlogo.png" alt="X" width="48" height="48" loading="lazy" decoding="async">
+              <img class="algoland-social__preview" src="assets/xcomp.png" alt="" width="360" height="360" loading="lazy" decoding="async" aria-hidden="true">
+            </a>
           </div>
         </div>
       </div>
@@ -108,6 +122,8 @@
     <section class="algoland-search-section" aria-label="Search Algoland profiles">
       <div class="container">
         <div class="algoland-search-panel algoland-search" aria-live="polite">
+          <h2 class="algoland-search__title">Check Progress</h2>
+          <p class="algoland-search__description">Type a wallet in the search bar below to check the current points, referrals and challenge completions.</p>
           <form class="algoland-search__form" data-algoland-search-form novalidate>
             <label for="algoland-search-input" class="sr-only">Search Algoland profiles</label>
             <input id="algoland-search-input" class="algoland-search__input" type="text" name="search"

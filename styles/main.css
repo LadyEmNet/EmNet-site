@@ -1330,12 +1330,79 @@ body.about-page .hero-logo {
   gap: clamp(16px, 3vw, 24px);
 }
 
+.algoland-hero__title {
+  margin: 0;
+  text-align: center;
+}
+
 .algoland-hero__copy .cta-actions {
   justify-content: center;
 }
 
+.algoland-social {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(12px, 3vw, 24px);
+  margin-top: clamp(16px, 4vw, 28px);
+}
+
+.algoland-social__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(10, 10, 10, 0.7);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.algoland-social__link:focus-visible {
+  outline: 2px solid rgba(38, 211, 197, 0.8);
+  outline-offset: 4px;
+}
+
+.algoland-social__link:hover,
+.algoland-social__link:focus-visible {
+  transform: translateY(-4px);
+  background: rgba(16, 16, 16, 0.9);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+.algoland-social__icon {
+  display: block;
+  width: clamp(32px, 7vw, 44px);
+  height: auto;
+}
+
+.algoland-social__preview {
+  position: absolute;
+  top: calc(100% + 16px);
+  left: 50%;
+  transform: translate(-50%, -6px) scale(0.96);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  width: min(340px, 64vw);
+  height: auto;
+  border-radius: 18px;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 5;
+}
+
+.algoland-social__link:hover .algoland-social__preview,
+.algoland-social__link:focus-visible .algoland-social__preview,
+.algoland-social__link:focus .algoland-social__preview {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0) scale(1);
+}
+
 .algoland-search-section {
-  padding: clamp(24px, 6vw, 48px) 0 clamp(28px, 6vw, 52px);
+  padding: clamp(20px, 5vw, 36px) 0 clamp(16px, 4vw, 28px);
   margin-top: clamp(12px, 4vw, 24px);
 }
 
@@ -1346,6 +1413,20 @@ body.about-page .hero-logo {
 
 .algoland-search-panel {
   width: min(100%, 600px);
+}
+
+.algoland-page .algoland-search__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.9rem);
+  color: #ffffff;
+  text-align: center;
+}
+
+.algoland-page .algoland-search__description {
+  margin: 0;
+  font-size: clamp(0.95rem, 2.6vw, 1.1rem);
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
 }
 
 .algoland-page .section-lede {
@@ -1408,8 +1489,8 @@ body.about-page .hero-logo {
 }
 
 .algoland-page .algoland-summary.section {
-  padding-top: clamp(24px, 5vw, 48px);
-  padding-bottom: clamp(32px, 6vw, 56px);
+  padding-top: clamp(18px, 4vw, 32px);
+  padding-bottom: clamp(28px, 5vw, 48px);
 }
 
 .algoland-page .algoland-calendar.section {
