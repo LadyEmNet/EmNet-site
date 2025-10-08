@@ -71,3 +71,58 @@ test('buildInspectorProfile resolves nested Lands Inspector values', async () =>
   assert.deepEqual(profile.referrals, ['ADDR1', 'ADDR2']);
   assert.equal(profile.referralsCount, 2);
 });
+
+test('buildInspectorProfile derives counters from summary-style payloads', async () => {
+  const { buildInspectorProfile } = await modulePromise;
+
+  const payload = {
+    dashboard: {
+      summary: {
+        profile: {
+          relativeIndex: '107',
+          referrerIndex: '0',
+        },
+        activity: {
+          pointsEarned: { value: '7800', decimals: 2 },
+          redeemedTotals: { total: '1200' },
+          questSummary: {
+            completedQuestsCount: '6',
+          },
+          challengeSummary: {
+            completedChallengesCount: 4,
+          },
+          referralSummary: {
+            count: '6',
+          },
+          weeklySummary: {
+            eligibility: {
+              weeks: ['Week 1', 'Week 2'],
+              count: '2',
+            },
+            entriesCount: '5',
+            availablePrizeCount: 1,
+            claimedPrizeCount: 0,
+          },
+        },
+      },
+    },
+  };
+
+  const profile = buildInspectorProfile(
+    'EMNETCRVN2B4LYV4BDQ5JFYBJVAK663G2AOEENUV2WZK5U6FS3LNEIWTCU',
+    payload,
+  );
+
+  assert.equal(profile.relativeId, 107);
+  assert.equal(profile.referrerId, 0);
+  assert.equal(profile.points, 78);
+  assert.equal(profile.redeemedPoints, 1200);
+  assert.equal(profile.completedQuestCount, 6);
+  assert.equal(profile.completedChallengeCount, 4);
+  assert.equal(profile.referralsCount, 6);
+  assert(profile.hasParticipation);
+  assert.equal(profile.weeklyDraws.entries, 5);
+  assert.deepEqual(profile.weeklyDraws.weeks, ['Week 1', 'Week 2']);
+  assert.equal(profile.weeklyDraws.availablePrizeCount, 1);
+  assert.equal(profile.weeklyDraws.claimedPrizeCount, 0);
+});

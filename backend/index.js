@@ -26,6 +26,7 @@ const RELATIVE_ID_KEYS = [
   'relative_id',
   'relative',
   'relid',
+  'relativeindex',
   'userindex',
   'user_id',
   'userid',
@@ -34,6 +35,7 @@ const REFERRER_ID_KEYS = [
   'referrerid',
   'referrer_id',
   'referrer',
+  'referrerindex',
   'parentid',
   'parent_id',
 ];
@@ -45,6 +47,10 @@ const POINT_KEYS = [
   'pointbalance',
   'currentpoints',
   'availablepoints',
+  'pointsearned',
+  'earnedpoints',
+  'pointsaccumulated',
+  'overallpoints',
   'balance',
 ];
 const REDEEMED_POINT_KEYS = [
@@ -54,6 +60,8 @@ const REDEEMED_POINT_KEYS = [
   'redeemed_points',
   'pointsclaimed',
   'claimedpoints',
+  'redeemedtotal',
+  'totalredeemedpoints',
 ];
 const QUEST_LIST_KEYS = [
   'completedquests',
@@ -65,6 +73,10 @@ const QUEST_LIST_KEYS = [
   'questscompletedlist',
   'quest_completed',
   'questcomplete',
+  'questsummary',
+  'questscompletedcount',
+  'completedquestscount',
+  'questscount',
 ];
 const CHALLENGE_LIST_KEYS = [
   'completedchallenges',
@@ -73,6 +85,10 @@ const CHALLENGE_LIST_KEYS = [
   'challengehistory',
   'challenge_history',
   'challenges_complete',
+  'challengesummary',
+  'challengescount',
+  'completedchallengescounter',
+  'challengecount',
 ];
 const REFERRAL_LIST_KEYS = [
   'referrals',
@@ -80,6 +96,9 @@ const REFERRAL_LIST_KEYS = [
   'referralslist',
   'referralhistory',
   'refs',
+  'referralsummary',
+  'referraloverview',
+  'referralactivity',
 ];
 const REFERRAL_COUNT_KEYS = [
   'referralcount',
@@ -99,6 +118,9 @@ const WEEKLY_DRAW_KEYS = [
   'draws',
   'weekly',
   'draw_history',
+  'weeklysummary',
+  'weeklyoverview',
+  'drawsummary',
 ];
 
 const AVAILABLE_DRAW_PRIZE_KEYS = [
@@ -109,6 +131,7 @@ const AVAILABLE_DRAW_PRIZE_KEYS = [
   'availableprizeids',
   'availableassets',
   'available',
+  'availableprizecount',
 ];
 
 const CLAIMED_DRAW_PRIZE_KEYS = [
@@ -119,6 +142,7 @@ const CLAIMED_DRAW_PRIZE_KEYS = [
   'claimedprizeids',
   'claimedassets',
   'claimed',
+  'claimedprizecount',
 ];
 
 const COMPLETABLE_CHALLENGE_KEYS = [
@@ -127,6 +151,7 @@ const COMPLETABLE_CHALLENGE_KEYS = [
   'challengeoptions',
   'challenge_pool',
   'eligiblechallenges',
+  'availablechallengecount',
 ];
 
 const WEEKLY_DRAW_ENTRY_KEYS = [
@@ -137,6 +162,8 @@ const WEEKLY_DRAW_ENTRY_KEYS = [
   'totalentries',
   'drawentries',
   'entrytotal',
+  'weeklyentriescount',
+  'totalentriescount',
 ];
 
 const CHALLENGES_PER_WEEK = 3;
@@ -1324,6 +1351,87 @@ function normaliseInspectorNumber(value) {
   return numeric;
 }
 
+function deriveInspectorCount(value, fallbackLength = null, seen = new Set(), depth = 0) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      const parsed = Number.parseInt(trimmed, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+
+  if (!value || typeof value !== 'object') {
+    if (typeof fallbackLength === 'number' && Number.isFinite(fallbackLength)) {
+      return fallbackLength;
+    }
+    return fallbackLength ?? null;
+  }
+
+  if (seen.has(value) || depth >= 5) {
+    if (typeof fallbackLength === 'number' && Number.isFinite(fallbackLength)) {
+      return fallbackLength;
+    }
+    return fallbackLength ?? null;
+  }
+
+  seen.add(value);
+
+  const normalised = normaliseInspectorNumber(value);
+  if (typeof normalised === 'number' && Number.isFinite(normalised)) {
+    return normalised;
+  }
+
+  const candidateKeys = [
+    'count',
+    'total',
+    'length',
+    'entries',
+    'entrycount',
+    'number',
+    'value',
+    'available',
+    'claimed',
+    'completed',
+    'redeemed',
+    'referrals',
+    'quantity',
+    'qty',
+    'sum',
+  ];
+
+  for (const key of candidateKeys) {
+    if (key in value) {
+      const nested = deriveInspectorCount(value[key], fallbackLength, seen, depth + 1);
+      if (typeof nested === 'number' && Number.isFinite(nested)) {
+        return nested;
+      }
+    }
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const nested = deriveInspectorCount(nestedValue, fallbackLength, seen, depth + 1);
+    if (typeof nested === 'number' && Number.isFinite(nested)) {
+      return nested;
+    }
+  }
+
+  if (typeof fallbackLength === 'number' && Number.isFinite(fallbackLength)) {
+    return fallbackLength;
+  }
+
+  return fallbackLength ?? null;
+}
+
 function normaliseInspectorList(value) {
   if (value === null || value === undefined) {
     return [];
@@ -1412,21 +1520,36 @@ function extractInspectorValue(payload, keyCandidates) {
       continue;
     }
     visited.add(current);
-    const lookup = new Map();
-    Object.entries(current).forEach(([key, value]) => {
-      const normalisedKey = normaliseInspectorKeyName(key);
-      if (normalisedKey && !lookup.has(normalisedKey)) {
-        lookup.set(normalisedKey, value);
-      }
-    });
+    const entries = Object.entries(current)
+      .map(([key, value]) => ({
+        original: key,
+        normalised: normaliseInspectorKeyName(key),
+        value,
+      }))
+      .filter((entry) => entry.normalised.length > 0);
+
     for (const candidate of normalisedCandidates) {
-      if (lookup.has(candidate)) {
-        const value = lookup.get(candidate);
-        if (isMeaningfulInspectorValue(value)) {
-          return value;
+      const directMatch = entries.find((entry) => entry.normalised === candidate);
+      if (directMatch) {
+        if (isMeaningfulInspectorValue(directMatch.value)) {
+          return directMatch.value;
         }
         if (!hasFallback) {
-          fallbackValue = value;
+          fallbackValue = directMatch.value;
+          hasFallback = true;
+        }
+        continue;
+      }
+
+      const partialMatch = entries.find((entry) => (
+        entry.normalised.includes(candidate)
+      ));
+      if (partialMatch) {
+        if (isMeaningfulInspectorValue(partialMatch.value)) {
+          return partialMatch.value;
+        }
+        if (!hasFallback) {
+          fallbackValue = partialMatch.value;
           hasFallback = true;
         }
       }
@@ -1529,13 +1652,14 @@ function buildInspectorProfile(address, payload) {
   const points = normaliseInspectorNumber(pointsSource) ?? 0;
   const redeemedPointsSource = extractInspectorValue(payload, REDEEMED_POINT_KEYS);
   const redeemedPoints = normaliseInspectorNumber(redeemedPointsSource) ?? 0;
-  const completedQuests = normaliseInspectorList(extractInspectorValue(payload, QUEST_LIST_KEYS));
-  const completedChallenges = normaliseInspectorList(
-    extractInspectorValue(payload, CHALLENGE_LIST_KEYS),
-  );
-  const completableChallenges = normaliseInspectorList(
-    extractInspectorValue(payload, COMPLETABLE_CHALLENGE_KEYS),
-  );
+  const completedQuestsSource = extractInspectorValue(payload, QUEST_LIST_KEYS);
+  const completedQuests = normaliseInspectorList(completedQuestsSource);
+  const completedChallengesSource = extractInspectorValue(payload, CHALLENGE_LIST_KEYS);
+  const completedChallenges = normaliseInspectorList(completedChallengesSource);
+  const completableChallengesSource = extractInspectorValue(payload, COMPLETABLE_CHALLENGE_KEYS);
+  const completableChallenges = normaliseInspectorList(completableChallengesSource);
+  const referralsSource = extractInspectorValue(payload, REFERRAL_LIST_KEYS);
+  const referrals = normaliseInspectorList(referralsSource);
   const weeklyDrawEligibilitySource = extractInspectorValue(payload, WEEKLY_DRAW_KEYS);
   const weeklyDrawsRaw = extractInspectorValue(payload, ['weeklydraws']);
   const weeklyDrawContainer = [weeklyDrawsRaw, weeklyDrawEligibilitySource]
@@ -1545,32 +1669,63 @@ function buildInspectorProfile(address, payload) {
     weeklyDrawContainer?.weeks,
     weeklyDrawContainer?.list,
     weeklyDrawContainer?.history,
+    weeklyDrawContainer?.eligibility,
+    weeklyDrawContainer?.eligibleWeeks,
     weeklyDrawEligibilitySource,
     weeklyDrawsRaw,
   );
+  const availablePrizesSource = extractInspectorValue(payload, AVAILABLE_DRAW_PRIZE_KEYS);
   const availablePrizes = pickFirstInspectorList(
-    extractInspectorValue(payload, AVAILABLE_DRAW_PRIZE_KEYS),
+    availablePrizesSource,
     weeklyDrawContainer?.available,
     weeklyDrawContainer?.availablePrizes,
     weeklyDrawContainer?.availablePrizeAssetIds,
+    weeklyDrawContainer?.prizes?.available,
   );
+  const claimedPrizesSource = extractInspectorValue(payload, CLAIMED_DRAW_PRIZE_KEYS);
   const claimedPrizes = pickFirstInspectorList(
-    extractInspectorValue(payload, CLAIMED_DRAW_PRIZE_KEYS),
+    claimedPrizesSource,
     weeklyDrawContainer?.claimed,
     weeklyDrawContainer?.claimedPrizes,
     weeklyDrawContainer?.claimedPrizeAssetIds,
+    weeklyDrawContainer?.prizes?.claimed,
   );
-  const referrals = pickFirstInspectorList(extractInspectorValue(payload, REFERRAL_LIST_KEYS));
-  const referralsCountCandidate = normaliseInspectorNumber(
-    extractInspectorValue(payload, REFERRAL_COUNT_KEYS),
+  const referralsCountCandidate = (() => {
+    const explicit = normaliseInspectorNumber(
+      extractInspectorValue(payload, REFERRAL_COUNT_KEYS),
+    );
+    if (typeof explicit === 'number' && Number.isFinite(explicit)) {
+      return explicit;
+    }
+    return deriveInspectorCount(referralsSource, referrals.length);
+  })();
+  const completedQuestsCount = deriveInspectorCount(completedQuestsSource, completedQuests.length);
+  const completedChallengesCount = deriveInspectorCount(
+    completedChallengesSource,
+    completedChallenges.length,
   );
-  const weeklyDrawEntriesCandidate = normaliseInspectorNumber(
-    extractInspectorValue(payload, WEEKLY_DRAW_ENTRY_KEYS)
-      ?? weeklyDrawContainer?.entries
-      ?? weeklyDrawContainer?.count
-      ?? weeklyDrawContainer?.total,
-  );
-  const weeklyDrawEntries = weeklyDrawEntriesCandidate ?? weeklyDrawEligibility.length;
+  const availablePrizeCount = deriveInspectorCount(availablePrizesSource, availablePrizes.length);
+  const claimedPrizeCount = deriveInspectorCount(claimedPrizesSource, claimedPrizes.length);
+  const weeklyDrawEntriesCandidate = (() => {
+    const explicit = normaliseInspectorNumber(
+      extractInspectorValue(payload, WEEKLY_DRAW_ENTRY_KEYS)
+        ?? weeklyDrawContainer?.entries
+        ?? weeklyDrawContainer?.count
+        ?? weeklyDrawContainer?.total,
+    );
+    if (typeof explicit === 'number' && Number.isFinite(explicit)) {
+      return explicit;
+    }
+    const containerCount = deriveInspectorCount(weeklyDrawContainer, weeklyDrawEligibility.length);
+    if (typeof containerCount === 'number' && Number.isFinite(containerCount)) {
+      return containerCount;
+    }
+    return deriveInspectorCount(weeklyDrawEligibilitySource, weeklyDrawEligibility.length);
+  })();
+  const weeklyDrawEntries = typeof weeklyDrawEntriesCandidate === 'number'
+    && Number.isFinite(weeklyDrawEntriesCandidate)
+    ? weeklyDrawEntriesCandidate
+    : weeklyDrawEligibility.length;
   const weeklyEligible = typeof weeklyDrawContainer?.eligible === 'boolean'
     ? weeklyDrawContainer.eligible
     : weeklyDrawEligibility.length > 0;
@@ -1584,7 +1739,12 @@ function buildInspectorProfile(address, payload) {
       || weeklyDrawEligibility.length > 0
       || weeklyDrawEntries > 0
       || availablePrizes.length > 0
-      || claimedPrizes.length > 0,
+      || claimedPrizes.length > 0
+      || (typeof completedQuestsCount === 'number' && completedQuestsCount > 0)
+      || (typeof completedChallengesCount === 'number' && completedChallengesCount > 0)
+      || (typeof referralsCountCandidate === 'number' && referralsCountCandidate > 0)
+      || (typeof availablePrizeCount === 'number' && availablePrizeCount > 0)
+      || (typeof claimedPrizeCount === 'number' && claimedPrizeCount > 0),
   );
 
   let statusMessage = null;
@@ -1606,6 +1766,12 @@ function buildInspectorProfile(address, payload) {
     weeks: weeklyDrawEligibility,
     availablePrizeAssetIds: availablePrizes,
     claimedPrizeAssetIds: claimedPrizes,
+    availablePrizeCount: Number.isFinite(availablePrizeCount)
+      ? availablePrizeCount
+      : availablePrizes.length,
+    claimedPrizeCount: Number.isFinite(claimedPrizeCount)
+      ? claimedPrizeCount
+      : claimedPrizes.length,
   };
 
   const profile = {
@@ -1618,12 +1784,24 @@ function buildInspectorProfile(address, payload) {
       : points,
     redeemedPoints,
     completedQuests,
+    completedQuestCount: Number.isFinite(completedQuestsCount)
+      ? completedQuestsCount
+      : completedQuests.length,
     completedChallenges,
+    completedChallengeCount: Number.isFinite(completedChallengesCount)
+      ? completedChallengesCount
+      : completedChallenges.length,
     completableChallenges,
     weeklyDrawEligibility,
     weeklyDraws,
     availableDrawPrizeAssetIds: availablePrizes,
+    availableDrawPrizeCount: Number.isFinite(availablePrizeCount)
+      ? availablePrizeCount
+      : availablePrizes.length,
     claimedDrawPrizeAssetIds: claimedPrizes,
+    claimedDrawPrizeCount: Number.isFinite(claimedPrizeCount)
+      ? claimedPrizeCount
+      : claimedPrizes.length,
     referrals,
     referralsCount: Number.isFinite(referralsCountCandidate)
       ? referralsCountCandidate
