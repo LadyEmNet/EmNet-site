@@ -11,10 +11,13 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.1.2",
+    "@algorandfoundation/algoland-sdk": "^1.1.0",
     "algosdk": "^3.5.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.0",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "undici": "^6.19.8"
   }
 }
