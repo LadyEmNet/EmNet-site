@@ -845,17 +845,6 @@
     const query = typeof details.query === 'string' ? details.query : '';
     const lookupType = details.type === 'id' ? 'id' : 'address';
 
-    const resolvedAddress = selectFirst(
-      data.resolvedAddress,
-      data.address,
-      data.walletAddress,
-      data.wallet,
-      data.accountAddress,
-      data.account,
-      lookupType === 'address' ? query : null
-    );
-    const relativeId = selectFirst(data.relativeId, data.relativeID, data.relative_id, data.relative);
-    const referrerId = selectFirst(data.referrerId, data.referrerID, data.referrer_id, data.referrer);
     const totalPoints = firstNumber(
       typeof data.points === 'number' ? data.points : null,
       data.points && firstNumber(data.points.total, data.points.current, data.points.balance, data.points.available),
@@ -914,10 +903,6 @@
       || availablePrizes.length > 0
       || claimedPrizes.length > 0;
 
-    const lookupLabel = lookupType === 'id'
-      ? (query ? `ID ${query}` : 'ID not provided')
-      : query || 'Not provided';
-
     if (!hasParticipation) {
       const emptyMessage = statusMessage
         || (lookupType === 'id'
@@ -928,31 +913,60 @@
       container.appendChild(createLookupText(statusMessage));
     }
 
-    const summarySection = createLookupSection('Profile summary');
-    summarySection.appendChild(createDefinitionList([
-      { term: 'Lookup value', value: lookupLabel },
-      { term: 'Resolved address', value: resolvedAddress || 'Not available' },
-      { term: 'Relative ID', value: relativeId || 'Not available' },
-      { term: 'Referrer ID', value: referrerId || 'Not available' },
-      { term: 'Points', value: formatNumberValue(totalPoints) },
-      { term: 'Redeemed points', value: formatNumberValue(redeemedPoints) },
-      { term: 'Referrals', value: referralsSummary },
+    const summarySection = createLookupSection('Summary', {
+      icon: '📊',
+      modifiers: ['summary'],
+    });
+    summarySection.appendChild(createStatGrid([
+      { label: 'Points', value: formatNumberValue(totalPoints), icon: '⭐' },
+      { label: 'Redeemed Points', value: formatNumberValue(redeemedPoints), icon: '🎁' },
+      { label: 'Referrals', value: referralsSummary, icon: '🤝' },
     ]));
     container.appendChild(summarySection);
 
-    container.appendChild(createListSection('Completed quests', completedQuests, 'No quests completed yet.'));
-    container.appendChild(createListSection('Completed challenges', completedChallenges, 'No challenges completed yet.'));
-    if (completableChallenges.length > 0) {
-      container.appendChild(
-        createListSection('Available challenges', completableChallenges, 'No additional challenges available.')
-      );
-    }
+    const questsTotal = firstNumber(
+      data.totalQuestCount,
+      data.questTotal,
+      data.questsTotal,
+      data.totalQuests,
+      data.questCount,
+      typeof data.quests === 'number' ? data.quests : null,
+      completedQuests.length
+    );
+    container.appendChild(
+      createProgressSection('Completed Quests', completedQuests, 'No quests completed yet.', {
+        icon: '✓',
+        total: questsTotal,
+      })
+    );
+
+    const challengesTotal = firstNumber(
+      data.totalChallengeCount,
+      data.challengeTotal,
+      data.challengesTotal,
+      data.totalChallenges,
+      data.challengeCount,
+      typeof data.challenges === 'number' ? data.challenges : null,
+      completedChallenges.length + completableChallenges.length
+    );
+    container.appendChild(
+      createProgressSection('Completed Challenges', completedChallenges, 'No challenges completed yet.', {
+        icon: '🏅',
+        total: challengesTotal,
+      })
+    );
+
     const referralsEmptyMessage = referralsProvided
       ? 'No referrals recorded yet.'
       : 'Referral data is not available yet.';
-    container.appendChild(createListSection('Referrals', referralsList, referralsEmptyMessage));
+    container.appendChild(
+      createReferralSection('Referrals', referralsList, referralsEmptyMessage, { icon: '👥' })
+    );
 
-    const weeklySection = createLookupSection('Weekly draw eligibility');
+    const weeklySection = createLookupSection('Weekly Draws', {
+      icon: '🎟️',
+      modifiers: ['highlight'],
+    });
     if (weeklyDrawDetails.text) {
       weeklySection.appendChild(createLookupText(weeklyDrawDetails.text));
     }
@@ -979,13 +993,35 @@
     container.appendChild(weeklySection);
   }
 
-  function createLookupSection(title) {
+  function createLookupSection(title, options = {}) {
     const section = document.createElement('div');
     section.className = 'lookup-modal__section';
+    const modifierList = [];
+    if (Array.isArray(options.modifiers)) {
+      modifierList.push(...options.modifiers);
+    }
+    if (typeof options.modifier === 'string') {
+      modifierList.push(options.modifier);
+    }
+    modifierList.forEach((modifier) => {
+      if (modifier) {
+        section.classList.add(`lookup-modal__section--${modifier}`);
+      }
+    });
     if (title) {
       const heading = document.createElement('h3');
       heading.className = 'lookup-modal__section-title';
-      heading.textContent = title;
+      if (options.icon) {
+        const icon = document.createElement('span');
+        icon.className = 'lookup-modal__section-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = options.icon;
+        heading.appendChild(icon);
+      }
+      const titleText = document.createElement('span');
+      titleText.className = 'lookup-modal__section-title-text';
+      titleText.textContent = title;
+      heading.appendChild(titleText);
       section.appendChild(heading);
     }
     return section;
@@ -1012,9 +1048,102 @@
     return list;
   }
 
-  function createListSection(title, items, emptyMessage) {
-    const section = createLookupSection(title);
-    section.appendChild(createLookupList(items, emptyMessage));
+  function createStatGrid(stats) {
+    const grid = document.createElement('div');
+    grid.className = 'lookup-modal__stat-grid';
+    stats.forEach((stat) => {
+      const card = document.createElement('div');
+      card.className = 'lookup-modal__stat-card';
+      if (stat.icon) {
+        const icon = document.createElement('span');
+        icon.className = 'lookup-modal__stat-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = stat.icon;
+        card.appendChild(icon);
+      }
+      const label = document.createElement('span');
+      label.className = 'lookup-modal__stat-label';
+      label.textContent = stat.label;
+      card.appendChild(label);
+      const value = document.createElement('span');
+      value.className = 'lookup-modal__stat-value';
+      value.textContent = stat.value != null && stat.value !== '' ? String(stat.value) : 'Not available';
+      card.appendChild(value);
+      grid.appendChild(card);
+    });
+    return grid;
+  }
+
+  function createProgressSection(title, items, emptyMessage, options = {}) {
+    const section = createLookupSection(title, {
+      icon: options.icon,
+      modifiers: ['progress'],
+    });
+    section.appendChild(createProgressNote(items.length, options.total));
+    section.appendChild(createProgressList(items, emptyMessage));
+    return section;
+  }
+
+  function createProgressNote(completed, total) {
+    const note = document.createElement('p');
+    note.className = 'lookup-modal__progress-note';
+    const completedValue = numberFormatter.format(completed);
+    const totalValue = typeof total === 'number' && Number.isFinite(total)
+      ? Math.max(total, completed)
+      : completed;
+    note.textContent = `${completedValue} of ${numberFormatter.format(totalValue)} complete`;
+    return note;
+  }
+
+  function createProgressList(items, emptyMessage = 'No data available.') {
+    if (!Array.isArray(items) || items.length === 0) {
+      return createLookupText(emptyMessage, 'lookup-modal__empty');
+    }
+    const list = document.createElement('ol');
+    list.className = 'lookup-modal__progress-list';
+    items.forEach((item, index) => {
+      const listItem = document.createElement('li');
+      listItem.className = 'lookup-modal__progress-item';
+
+      const indexElement = document.createElement('span');
+      indexElement.className = 'lookup-modal__progress-index';
+      indexElement.textContent = numberFormatter.format(index + 1);
+      listItem.appendChild(indexElement);
+
+      const textElement = document.createElement('span');
+      textElement.className = 'lookup-modal__progress-text';
+      textElement.textContent = item;
+      listItem.appendChild(textElement);
+
+      const checkElement = document.createElement('span');
+      checkElement.className = 'lookup-modal__progress-check';
+      checkElement.setAttribute('aria-hidden', 'true');
+      checkElement.textContent = '✓';
+      listItem.appendChild(checkElement);
+
+      list.appendChild(listItem);
+    });
+    return list;
+  }
+
+  function createReferralSection(title, referrals, emptyMessage, options = {}) {
+    const section = createLookupSection(title, {
+      icon: options.icon,
+      modifiers: ['referrals'],
+    });
+    if (Array.isArray(referrals) && referrals.length > 0) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'lookup-modal__referral-tags';
+      referrals.forEach((referral) => {
+        const tag = document.createElement('span');
+        tag.className = 'lookup-modal__referral-tag';
+        tag.textContent = referral;
+        wrapper.appendChild(tag);
+      });
+      section.appendChild(wrapper);
+    } else {
+      section.appendChild(createLookupText(emptyMessage, 'lookup-modal__empty'));
+    }
     return section;
   }
 
