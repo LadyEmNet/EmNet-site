@@ -101,6 +101,9 @@
             <a class="btn" href="https://www.algoland.co/?referralCode=107" target="_blank" rel="noopener">Join now</a>
             <a class="btn" href="https://www.algoland.co/info" target="_blank" rel="noopener">Learn more</a>
           </div>
+          <div class="cta-actions algoland-stats-link">
+            <a class="btn" href="#algoland-summary">Algoland Stats</a>
+          </div>
           <div class="algoland-social" aria-label="Algoland community channels">
             <a class="algoland-social__link" href="https://t.me/algorand" target="_blank" rel="noopener" aria-label="Open Algorand community Telegram">
               <img class="algoland-social__icon" src="assets/tglogo.png" alt="Telegram" width="48" height="48" loading="lazy" decoding="async">
@@ -135,7 +138,17 @@
       </div>
     </section>
 
-    <section class="container section algoland-summary" aria-live="polite">
+    <div class="algoland-stats-nav-wrapper">
+      <div class="container">
+        <nav class="algoland-stats-nav" aria-label="Algoland stats navigation">
+          <a href="#algoland-summary">Totals</a>
+          <a href="#algoland-weekly">Badges</a>
+          <a href="#algoland-performance">Conversions</a>
+        </nav>
+      </div>
+    </div>
+
+    <section class="container section algoland-summary" id="algoland-summary" aria-live="polite">
       <div class="summary-highlight" role="list">
         <article class="summary-card summary-card--headline" role="listitem">
           <h2>Total entrants</h2>
@@ -151,7 +164,7 @@
       <p class="last-updated" data-algoland-updated aria-live="polite"></p>
     </section>
 
-    <section class="container section algoland-calendar" aria-live="polite">
+    <section class="container section algoland-calendar" id="algoland-weekly" aria-live="polite">
       <h2 class="algoland-calendar__title">Weekly challenge tracker</h2>
       <div class="weeks-grid">
         <article class="week-card is-open has-rollover" data-week-card data-week="1" data-opens-on="2025-09-22">
@@ -317,7 +330,7 @@
       <img src="assets/divider.png" alt="" class="section-divider" aria-hidden="true" loading="lazy" decoding="async">
     </div>
 
-    <section class="container section algoland-table-section">
+    <section class="container section algoland-table-section" id="algoland-performance">
       <div class="algoland-alerts" role="status" aria-live="polite" data-algoland-alerts></div>
       <div class="table-wrapper">
         <table class="data-table algoland-table" data-algoland-table>
