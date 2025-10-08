@@ -1308,7 +1308,7 @@ body.about-page .hero-logo {
 /* Algoland page */
 .algoland-hero {
   position: relative;
-  padding: clamp(88px, 18vw, 160px) 0;
+  padding: clamp(72px, 16vw, 140px) 0 clamp(48px, 10vw, 96px);
   color: #ffffff;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.8)), url('../assets/Algoland.jpg') center/cover no-repeat;
 }
@@ -1332,6 +1332,12 @@ body.about-page .hero-logo {
 
 .algoland-hero__copy .cta-actions {
   justify-content: flex-start;
+}
+
+.algoland-hero__search {
+  justify-self: start;
+  width: min(100%, 560px);
+  margin-top: clamp(8px, 3vw, 20px);
 }
 
 .algoland-page .section-lede {
@@ -1393,10 +1399,19 @@ body.about-page .hero-logo {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.algoland-page .algoland-summary.section {
+  padding-top: clamp(32px, 7vw, 64px);
+  padding-bottom: clamp(40px, 8vw, 72px);
+}
+
+.algoland-page .algoland-calendar.section {
+  padding-top: clamp(44px, 9vw, 88px);
+}
+
 .algoland-page .algoland-search {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(8px, 2vw, 14px);
 }
 
 .algoland-page .algoland-search__form {
@@ -1404,7 +1419,7 @@ body.about-page .hero-logo {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: clamp(14px, 3vw, 18px);
+  padding: clamp(12px, 2.5vw, 16px);
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(38, 211, 197, 0.25);
   border-radius: 14px;
@@ -1802,7 +1817,7 @@ body.lookup-modal-open {
 .prize-modal__dialog,
 .lookup-modal__dialog {
   position: relative;
-  width: min(560px, 100%);
+  width: min(640px, 96vw);
   background: rgba(14, 14, 14, 0.96);
   border: 1px solid rgba(38, 211, 197, 0.4);
   border-radius: 22px;
@@ -1812,6 +1827,8 @@ body.lookup-modal-open {
   flex-direction: column;
   gap: clamp(16px, 3vw, 20px);
   z-index: 1;
+  max-height: calc(100vh - clamp(72px, 14vw, 136px));
+  overflow-y: auto;
 }
 
 .prize-modal__close,
@@ -1993,12 +2010,28 @@ body.lookup-modal-open {
   color: rgba(255, 255, 255, 0.6);
 }
 
-@media (max-width: 480px) {
-  .prize-modal__dialog {
-    padding: 24px;
+@media (max-width: 640px) {
+  .prize-modal,
+  .lookup-modal {
+    align-items: flex-start;
   }
 
-  .prize-modal__close {
+  .prize-modal__dialog,
+  .lookup-modal__dialog {
+    margin: auto;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .prize-modal__dialog,
+  .lookup-modal__dialog {
+    padding: clamp(18px, 7vw, 24px);
+    width: 100%;
+  }
+
+  .prize-modal__close,
+  .lookup-modal__close {
     width: 32px;
     height: 32px;
     font-size: 1.25rem;
