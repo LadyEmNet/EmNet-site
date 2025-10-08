@@ -767,7 +767,8 @@
       const titleElement = document.createElement('h2');
       titleElement.id = 'lookup-modal-title';
       titleElement.setAttribute('data-lookup-title', '');
-      titleElement.textContent = 'Algoland profile lookup';
+      titleElement.className = 'lookup-modal__title';
+      titleElement.textContent = 'Algoland Progress Report';
 
       const bodyElement = document.createElement('div');
       bodyElement.className = 'lookup-modal__body';
@@ -804,7 +805,7 @@
         return;
       }
       const descriptor = details && typeof details === 'object' ? details : {};
-      titleElement.textContent = 'Algoland profile lookup';
+      titleElement.textContent = 'Algoland Progress Report';
       renderLookupModalBody(bodyElement, descriptor);
       modal.hidden = false;
       modal.dataset.open = 'true';
@@ -860,7 +861,6 @@
     );
     const completedQuests = normaliseListItems(data.completedQuests || data.quests);
     const completedChallenges = normaliseListItems(data.completedChallenges || data.challenges);
-    const completableChallenges = normaliseListItems(data.completableChallenges || data.availableChallenges);
     const referralsList = normaliseListItems(data.referrals);
     const referralsProvided = Array.isArray(data.referrals)
       || typeof data.referrals === 'number'
@@ -879,17 +879,6 @@
     const weeklyDrawDetails = normaliseWeeklyDraws(
       data.weeklyDraws ?? data.draws ?? data.weeklyDrawEligibility
     );
-    const weeklyList = Array.isArray(weeklyDrawDetails.list) ? weeklyDrawDetails.list : [];
-    const availablePrizes = normaliseListItems(
-      data.availableDrawPrizeAssetIds
-        || data.availableDrawPrizes
-        || (data.weeklyDraws && data.weeklyDraws.availablePrizeAssetIds)
-    );
-    const claimedPrizes = normaliseListItems(
-      data.claimedDrawPrizeAssetIds
-        || data.claimedDrawPrizes
-        || (data.weeklyDraws && data.weeklyDraws.claimedPrizeAssetIds)
-    );
     const statusMessage = typeof data.statusMessage === 'string' && data.statusMessage.trim().length
       ? data.statusMessage.trim()
       : null;
@@ -899,9 +888,8 @@
       || completedQuests.length > 0
       || completedChallenges.length > 0
       || referralsList.length > 0
-      || weeklyList.length > 0
-      || availablePrizes.length > 0
-      || claimedPrizes.length > 0;
+      || (typeof weeklyDrawDetails.totalCount === 'number' && weeklyDrawDetails.totalCount > 0)
+      || (typeof weeklyDrawDetails.eligibleCount === 'number' && weeklyDrawDetails.eligibleCount > 0);
 
     if (!hasParticipation) {
       const emptyMessage = statusMessage
@@ -919,7 +907,7 @@
     });
     summarySection.appendChild(createStatGrid([
       { label: 'Points', value: formatNumberValue(totalPoints), icon: '⭐' },
-      { label: 'Redeemed Points', value: formatNumberValue(redeemedPoints), icon: '🎁' },
+      { label: 'Completed Challenges', value: formatNumberValue(completedChallenges.length), icon: '🏆' },
       { label: 'Referrals', value: referralsSummary, icon: '🤝' },
     ]));
     container.appendChild(summarySection);
@@ -940,22 +928,6 @@
       })
     );
 
-    const challengesTotal = firstNumber(
-      data.totalChallengeCount,
-      data.challengeTotal,
-      data.challengesTotal,
-      data.totalChallenges,
-      data.challengeCount,
-      typeof data.challenges === 'number' ? data.challenges : null,
-      completedChallenges.length + completableChallenges.length
-    );
-    container.appendChild(
-      createProgressSection('Completed Challenges', completedChallenges, 'No challenges completed yet.', {
-        icon: '🏅',
-        total: challengesTotal,
-      })
-    );
-
     const referralsEmptyMessage = referralsProvided
       ? 'No referrals recorded yet.'
       : 'Referral data is not available yet.';
@@ -967,28 +939,23 @@
       icon: '🎟️',
       modifiers: ['highlight'],
     });
-    if (weeklyDrawDetails.text) {
-      weeklySection.appendChild(createLookupText(weeklyDrawDetails.text));
-    }
-    if (weeklyList.length > 0) {
-      weeklySection.appendChild(createLookupList(weeklyList));
-    } else if (!weeklyDrawDetails.text) {
+    const eligibleWeeks =
+      typeof weeklyDrawDetails.eligibleCount === 'number'
+        ? weeklyDrawDetails.eligibleCount
+        : typeof weeklyDrawDetails.totalCount === 'number' && weeklyDrawDetails.totalCount > 0
+          ? weeklyDrawDetails.totalCount
+          : null;
+    if (typeof eligibleWeeks === 'number') {
+      weeklySection.appendChild(
+        createLookupText(`Total eligible weeks: ${numberFormatter.format(eligibleWeeks)}`)
+      );
+    } else {
       weeklySection.appendChild(
         createLookupText(
           weeklyDrawDetails.emptyMessage || 'Weekly draw eligibility data is not available yet.',
           'lookup-modal__empty'
         )
       );
-    } else if (weeklyDrawDetails.emptyMessage) {
-      weeklySection.appendChild(createLookupText(weeklyDrawDetails.emptyMessage, 'lookup-modal__empty'));
-    }
-    if (availablePrizes.length > 0) {
-      weeklySection.appendChild(createLookupText('Unclaimed prizes', 'lookup-modal__text'));
-      weeklySection.appendChild(createLookupList(availablePrizes));
-    }
-    if (claimedPrizes.length > 0) {
-      weeklySection.appendChild(createLookupText('Claimed prizes', 'lookup-modal__text'));
-      weeklySection.appendChild(createLookupList(claimedPrizes));
     }
     container.appendChild(weeklySection);
   }
@@ -1079,13 +1046,34 @@
       icon: options.icon,
       modifiers: ['progress'],
     });
-    section.appendChild(createProgressNote(items.length, options.total));
-    section.appendChild(createProgressList(items, emptyMessage));
+    const totalCompleted = Array.isArray(items) ? items.length : 0;
+    if (totalCompleted > 0) {
+      const collapsible = document.createElement('details');
+      collapsible.className = 'lookup-modal__collapsible';
+
+      const summary = document.createElement('summary');
+      summary.className = 'lookup-modal__collapsible-summary';
+      summary.appendChild(createProgressNote(totalCompleted, options.total, 'span'));
+
+      const icon = document.createElement('span');
+      icon.className = 'lookup-modal__collapsible-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '▾';
+      summary.appendChild(icon);
+
+      collapsible.appendChild(summary);
+      const list = createProgressList(items, emptyMessage);
+      collapsible.appendChild(list);
+      section.appendChild(collapsible);
+    } else {
+      section.appendChild(createProgressNote(totalCompleted, options.total));
+      section.appendChild(createProgressList(items, emptyMessage));
+    }
     return section;
   }
 
-  function createProgressNote(completed, total) {
-    const note = document.createElement('p');
+  function createProgressNote(completed, total, elementTag = 'p') {
+    const note = document.createElement(elementTag);
     note.className = 'lookup-modal__progress-note';
     const completedValue = numberFormatter.format(completed);
     const totalValue = typeof total === 'number' && Number.isFinite(total)
@@ -1170,13 +1158,22 @@
 
   function normaliseWeeklyDraws(value) {
     if (value == null) {
-      return { text: '', list: [], emptyMessage: 'Weekly draw eligibility data is not available yet.' };
-    }
-    if (Array.isArray(value)) {
       return {
         text: '',
-        list: normaliseListItems(value),
+        list: [],
+        emptyMessage: 'Weekly draw eligibility data is not available yet.',
+        eligibleCount: null,
+        totalCount: 0,
+      };
+    }
+    if (Array.isArray(value)) {
+      const list = normaliseListItems(value);
+      return {
+        text: '',
+        list,
         emptyMessage: 'No weekly draw entries recorded yet.',
+        eligibleCount: countEligibleEntries(value),
+        totalCount: list.length,
       };
     }
     if (typeof value === 'object') {
@@ -1203,18 +1200,106 @@
         text: summaryParts.join(' • '),
         list,
         emptyMessage: list.length === 0 ? 'No weekly draw entries recorded yet.' : '',
+        eligibleCount: typeof eligible === 'boolean'
+          ? eligible
+            ? Math.max(1, countEligibleEntries(value.weeks))
+            : 0
+          : countEligibleEntries(value.weeks),
+        totalCount: list.length,
       };
     }
     if (typeof value === 'boolean') {
-      return { text: value ? 'Eligible' : 'Not eligible', list: [], emptyMessage: '' };
+      return {
+        text: value ? 'Eligible' : 'Not eligible',
+        list: [],
+        emptyMessage: '',
+        eligibleCount: value ? 1 : 0,
+        totalCount: value ? 1 : 0,
+      };
     }
     if (typeof value === 'number' && Number.isFinite(value)) {
-      return { text: numberFormatter.format(value), list: [], emptyMessage: '' };
+      return {
+        text: numberFormatter.format(value),
+        list: [],
+        emptyMessage: '',
+        eligibleCount: null,
+        totalCount: 0,
+      };
     }
     if (typeof value === 'string' && value.trim().length > 0) {
-      return { text: value, list: [], emptyMessage: '' };
+      const eligibility = inferEligibilityFromString(value);
+      return {
+        text: value,
+        list: [],
+        emptyMessage: '',
+        eligibleCount: typeof eligibility === 'boolean' ? (eligibility ? 1 : 0) : null,
+        totalCount: typeof eligibility === 'boolean' ? 1 : 0,
+      };
     }
-    return { text: '', list: [], emptyMessage: 'Weekly draw eligibility data is not available yet.' };
+    return {
+      text: '',
+      list: [],
+      emptyMessage: 'Weekly draw eligibility data is not available yet.',
+      eligibleCount: null,
+      totalCount: 0,
+    };
+  }
+
+  function countEligibleEntries(items) {
+    if (!Array.isArray(items)) {
+      return 0;
+    }
+    return items.reduce((count, item) => {
+      const eligibility = inferEligibility(item);
+      return eligibility === true ? count + 1 : count;
+    }, 0);
+  }
+
+  function inferEligibility(value) {
+    if (value == null) {
+      return null;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'object') {
+      if (typeof value.eligible === 'boolean') {
+        return value.eligible;
+      }
+      if (typeof value.isEligible === 'boolean') {
+        return value.isEligible;
+      }
+      if (typeof value.status === 'string') {
+        return inferEligibilityFromString(value.status);
+      }
+      if (typeof value.summary === 'string') {
+        return inferEligibilityFromString(value.summary);
+      }
+      if (typeof value.description === 'string') {
+        return inferEligibilityFromString(value.description);
+      }
+    }
+    if (typeof value === 'string') {
+      return inferEligibilityFromString(value);
+    }
+    return null;
+  }
+
+  function inferEligibilityFromString(text) {
+    if (typeof text !== 'string') {
+      return null;
+    }
+    const normalised = text.trim().toLowerCase();
+    if (!normalised) {
+      return null;
+    }
+    if (normalised.includes('not eligible')) {
+      return false;
+    }
+    if (normalised.includes('eligible')) {
+      return true;
+    }
+    return null;
   }
 
   function normaliseListItems(value) {
