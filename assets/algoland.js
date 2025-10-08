@@ -871,6 +871,7 @@
     );
     const completedQuests = normaliseListItems(data.completedQuests || data.quests);
     const completedChallenges = normaliseListItems(data.completedChallenges || data.challenges);
+    const completableChallenges = normaliseListItems(data.completableChallenges || data.availableChallenges);
     const referralsList = normaliseListItems(data.referrals);
     const referralsProvided = Array.isArray(data.referrals)
       || typeof data.referrals === 'number'
@@ -886,11 +887,46 @@
     const referralsSummary = referralsCount === null
       ? (referralsProvided ? '0' : 'Not available')
       : numberFormatter.format(referralsCount);
-    const weeklyDrawDetails = normaliseWeeklyDraws(data.weeklyDraws ?? data.draws);
+    const weeklyDrawDetails = normaliseWeeklyDraws(
+      data.weeklyDraws ?? data.draws ?? data.weeklyDrawEligibility
+    );
+    const weeklyList = Array.isArray(weeklyDrawDetails.list) ? weeklyDrawDetails.list : [];
+    const availablePrizes = normaliseListItems(
+      data.availableDrawPrizeAssetIds
+        || data.availableDrawPrizes
+        || (data.weeklyDraws && data.weeklyDraws.availablePrizeAssetIds)
+    );
+    const claimedPrizes = normaliseListItems(
+      data.claimedDrawPrizeAssetIds
+        || data.claimedDrawPrizes
+        || (data.weeklyDraws && data.weeklyDraws.claimedPrizeAssetIds)
+    );
+    const statusMessage = typeof data.statusMessage === 'string' && data.statusMessage.trim().length
+      ? data.statusMessage.trim()
+      : null;
+    const hasParticipation = data.hasParticipation === true
+      || (typeof totalPoints === 'number' && totalPoints > 0)
+      || (typeof redeemedPoints === 'number' && redeemedPoints > 0)
+      || completedQuests.length > 0
+      || completedChallenges.length > 0
+      || referralsList.length > 0
+      || weeklyList.length > 0
+      || availablePrizes.length > 0
+      || claimedPrizes.length > 0;
 
     const lookupLabel = lookupType === 'id'
       ? (query ? `ID ${query}` : 'ID not provided')
       : query || 'Not provided';
+
+    if (!hasParticipation) {
+      const emptyMessage = statusMessage
+        || (lookupType === 'id'
+          ? 'We couldn’t find any Algoland activity for that user yet.'
+          : 'This wallet hasn’t participated in Algoland yet.');
+      container.appendChild(createLookupText(emptyMessage, 'lookup-modal__empty'));
+    } else if (statusMessage) {
+      container.appendChild(createLookupText(statusMessage));
+    }
 
     const summarySection = createLookupSection('Profile summary');
     summarySection.appendChild(createDefinitionList([
@@ -906,6 +942,11 @@
 
     container.appendChild(createListSection('Completed quests', completedQuests, 'No quests completed yet.'));
     container.appendChild(createListSection('Completed challenges', completedChallenges, 'No challenges completed yet.'));
+    if (completableChallenges.length > 0) {
+      container.appendChild(
+        createListSection('Available challenges', completableChallenges, 'No additional challenges available.')
+      );
+    }
     const referralsEmptyMessage = referralsProvided
       ? 'No referrals recorded yet.'
       : 'Referral data is not available yet.';
@@ -915,7 +956,6 @@
     if (weeklyDrawDetails.text) {
       weeklySection.appendChild(createLookupText(weeklyDrawDetails.text));
     }
-    const weeklyList = Array.isArray(weeklyDrawDetails.list) ? weeklyDrawDetails.list : [];
     if (weeklyList.length > 0) {
       weeklySection.appendChild(createLookupList(weeklyList));
     } else if (!weeklyDrawDetails.text) {
@@ -927,6 +967,14 @@
       );
     } else if (weeklyDrawDetails.emptyMessage) {
       weeklySection.appendChild(createLookupText(weeklyDrawDetails.emptyMessage, 'lookup-modal__empty'));
+    }
+    if (availablePrizes.length > 0) {
+      weeklySection.appendChild(createLookupText('Unclaimed prizes', 'lookup-modal__text'));
+      weeklySection.appendChild(createLookupList(availablePrizes));
+    }
+    if (claimedPrizes.length > 0) {
+      weeklySection.appendChild(createLookupText('Claimed prizes', 'lookup-modal__text'));
+      weeklySection.appendChild(createLookupList(claimedPrizes));
     }
     container.appendChild(weeklySection);
   }
