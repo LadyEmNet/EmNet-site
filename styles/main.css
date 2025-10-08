@@ -1433,6 +1433,12 @@ body.about-page .hero-logo {
   scroll-padding-top: calc(var(--site-header-height) + 96px);
 }
 
+.algoland-summary,
+.algoland-calendar,
+.algoland-table-section {
+  scroll-margin-top: calc(var(--site-header-height) + 132px);
+}
+
 .algoland-page .algoland-search__title {
   margin: 0;
   font-size: clamp(1.35rem, 4vw, 1.9rem);
