@@ -1876,6 +1876,10 @@ body.lookup-modal-open {
   color: rgba(255, 255, 255, 0.92);
 }
 
+.lookup-modal__title {
+  text-align: center;
+}
+
 .prize-modal__body {
   display: flex;
   flex-direction: column;
@@ -1935,7 +1939,7 @@ body.lookup-modal-open {
 
 .lookup-modal__stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: clamp(12px, 2.5vw, 18px);
 }
 
@@ -1974,8 +1978,52 @@ body.lookup-modal-open {
   gap: 12px;
 }
 
+.lookup-modal__collapsible {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.lookup-modal__collapsible summary {
+  list-style: none;
+}
+
+.lookup-modal__collapsible-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lookup-modal__collapsible-summary:focus-visible {
+  outline: 2px solid rgba(83, 240, 227, 0.6);
+  outline-offset: 4px;
+}
+
+.lookup-modal__collapsible-icon {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  transition: transform 0.2s ease;
+}
+
+.lookup-modal__collapsible[open] .lookup-modal__collapsible-icon {
+  transform: rotate(180deg);
+}
+
+.lookup-modal__collapsible .lookup-modal__progress-list {
+  margin-top: 12px;
+}
+
+.lookup-modal__collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
 .lookup-modal__progress-note {
   margin: 0;
+  display: block;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2197,6 +2245,23 @@ body.lookup-modal-open {
     width: 32px;
     height: 32px;
     font-size: 1.25rem;
+  }
+
+  .lookup-modal__stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .lookup-modal__stat-card {
+    padding: 10px 12px;
+  }
+
+  .lookup-modal__stat-value {
+    font-size: 1.2rem;
+  }
+
+  .lookup-modal__stat-label {
+    font-size: 0.7rem;
   }
 }
 
