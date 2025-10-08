@@ -1906,6 +1906,168 @@ body.lookup-modal-open {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(83, 240, 227, 0.88);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.lookup-modal__section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: rgba(83, 240, 227, 0.14);
+  color: rgba(83, 240, 227, 0.95);
+  font-size: 1.1rem;
+}
+
+.lookup-modal__section-title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.lookup-modal__section--summary {
+  padding: clamp(18px, 3.5vw, 22px);
+}
+
+.lookup-modal__stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: clamp(12px, 2.5vw, 18px);
+}
+
+.lookup-modal__stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(12, 20, 32, 0.75);
+  border: 1px solid rgba(83, 240, 227, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(14, 132, 132, 0.08);
+}
+
+.lookup-modal__stat-icon {
+  font-size: 1.3rem;
+  color: rgba(83, 240, 227, 0.92);
+}
+
+.lookup-modal__stat-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.lookup-modal__stat-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.lookup-modal__section--progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lookup-modal__progress-note {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lookup-modal__progress-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.lookup-modal__progress-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(14, 24, 38, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lookup-modal__progress-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(83, 240, 227, 0.16);
+  color: rgba(83, 240, 227, 0.9);
+  font-weight: 600;
+}
+
+.lookup-modal__progress-text {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.lookup-modal__progress-check {
+  font-size: 1.1rem;
+  color: rgba(119, 255, 186, 0.9);
+}
+
+.lookup-modal__section--referrals {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lookup-modal__referral-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lookup-modal__referral-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(83, 240, 227, 0.12);
+  border: 1px solid rgba(83, 240, 227, 0.24);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+.lookup-modal__section--highlight {
+  background: rgba(22, 30, 48, 0.85);
+  border-color: rgba(83, 240, 227, 0.28);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.lookup-modal__section--highlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(83, 240, 227, 0.18), rgba(52, 94, 255, 0.12));
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.lookup-modal__section--highlight > * {
+  position: relative;
+  z-index: 1;
 }
 
 .lookup-modal__definition-list {
