@@ -5,7 +5,8 @@ A lightweight static site for EmNet Community Management Limited. Each page shar
 ## Directory structure
 - `index.html` – marketing homepage with hero, service overview, practical examples, and multiple calls-to-action that anchor back to the contact section.
 - `about.html` – standalone founder story with an illustrated hero banner and long-form copy.
-- `services.html` – detailed breakdown of service tiers, pricing considerations, and AIS framework highlights.
+- `services.html` – temporarily redirects to the coming soon page while the services overview is rebuilt; legacy content retained for reference.
+- `coming-soon.html` – holding page with the latest status while new services information is prepared.
 - `how-we-work.html` – explains the AIS (Audit → Implement → Sustain) workflow and the component services list.
 - `privacy.html` – privacy policy and cookie notice.
 - `assets/`
