@@ -1337,6 +1337,8 @@ body.about-page .hero-logo {
 
 .algoland-hero__copy .cta-actions {
   justify-content: center;
+  gap: clamp(8px, 2vw, 14px);
+  margin-top: clamp(8px, 2vw, 16px);
 }
 
 .algoland-social {
@@ -1344,7 +1346,7 @@ body.about-page .hero-logo {
   justify-content: center;
   align-items: center;
   gap: clamp(12px, 3vw, 24px);
-  margin-top: clamp(16px, 4vw, 28px);
+  margin-top: clamp(8px, 3vw, 20px);
 }
 
 .algoland-social__link {
