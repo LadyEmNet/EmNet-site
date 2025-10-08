@@ -17,8 +17,13 @@ test('buildInspectorProfile resolves nested Lands Inspector values', async () =>
     },
     stats: {
       overview: {
-        pointsBalance: '78000',
-        redeemedPoints: '1200',
+        pointsBalance: {
+          value: '78000',
+          decimals: 1,
+        },
+        redeemedPoints: {
+          value: '1200',
+        },
         weeklyDraws: {
           eligible: true,
           entries: 5,
@@ -40,14 +45,14 @@ test('buildInspectorProfile resolves nested Lands Inspector values', async () =>
   };
 
   const resolvedPoints = extractInspectorValue(payload, ['points', 'pointsBalance']);
-  assert.equal(resolvedPoints, '78000');
+  assert.equal(resolvedPoints.value, '78000');
 
   const profile = buildInspectorProfile(
     'EMNETCRVN2B4LYV4BDQ5JFYBJVAK663G2AOEENUV2WZK5U6FS3LNEIWTCU',
     payload,
   );
 
-  assert.equal(profile.points, 78000);
+  assert.equal(profile.points, 7800);
   assert.equal(profile.pointsRaw, 78000);
   assert.equal(profile.redeemedPoints, 1200);
   assert.equal(profile.relativeId, 12);
