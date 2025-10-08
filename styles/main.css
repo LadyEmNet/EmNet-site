@@ -1308,7 +1308,7 @@ body.about-page .hero-logo {
 /* Algoland page */
 .algoland-hero {
   position: relative;
-  padding: clamp(72px, 16vw, 140px) 0 clamp(48px, 10vw, 96px);
+  padding: clamp(72px, 16vw, 140px) 0 clamp(36px, 8vw, 72px);
   color: #ffffff;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.8)), url('../assets/Algoland.jpg') center/cover no-repeat;
 }
@@ -1331,13 +1331,21 @@ body.about-page .hero-logo {
 }
 
 .algoland-hero__copy .cta-actions {
-  justify-content: flex-start;
+  justify-content: center;
 }
 
-.algoland-hero__search {
-  justify-self: start;
-  width: min(100%, 560px);
-  margin-top: clamp(8px, 3vw, 20px);
+.algoland-search-section {
+  padding: clamp(24px, 6vw, 48px) 0 clamp(28px, 6vw, 52px);
+  margin-top: clamp(12px, 4vw, 24px);
+}
+
+.algoland-search-section .container {
+  display: flex;
+  justify-content: center;
+}
+
+.algoland-search-panel {
+  width: min(100%, 600px);
 }
 
 .algoland-page .section-lede {
@@ -1400,12 +1408,13 @@ body.about-page .hero-logo {
 }
 
 .algoland-page .algoland-summary.section {
-  padding-top: clamp(32px, 7vw, 64px);
-  padding-bottom: clamp(40px, 8vw, 72px);
+  padding-top: clamp(24px, 5vw, 48px);
+  padding-bottom: clamp(32px, 6vw, 56px);
 }
 
 .algoland-page .algoland-calendar.section {
-  padding-top: clamp(44px, 9vw, 88px);
+  padding-top: clamp(20px, 4vw, 36px);
+  padding-bottom: clamp(20px, 4vw, 40px);
 }
 
 .algoland-page .algoland-search {
@@ -1475,6 +1484,14 @@ body.about-page .hero-logo {
 
 .algoland-page .algoland-calendar {
   padding-top: 0;
+}
+
+.algoland-page .section-divider {
+  margin: clamp(16px, 4vw, 32px) auto;
+}
+
+.algoland-page .algoland-table-section.section {
+  padding-top: clamp(16px, 4vw, 28px);
 }
 
 .algoland-page .algoland-calendar__title {
