@@ -3,10 +3,239 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import NodeCache from 'node-cache';
+import path from 'node:path';
+import { setDefaultResultOrder } from 'node:dns';
+import { createRequire } from 'node:module';
+import { STATUS_CODES } from 'node:http';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { Agent, setGlobalDispatcher } from 'undici';
 
 import { APP_ID, DISTRIBUTOR_ALLOWLIST, WEEK_CONFIG, getAllowlistForAsset } from './config.js';
 import { getAllPrizes, getPrizeForWeek } from './prizeStore.js';
+
+const require = createRequire(import.meta.url);
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const { AlgolandSDK } = require(path.join(
+  currentDir,
+  'node_modules',
+  '@algorandfoundation',
+  'algoland-sdk',
+  'dist',
+  'cjs',
+  'index.js',
+));
+const { AlgorandClient } = require(path.join(
+  currentDir,
+  'node_modules',
+  '@algorandfoundation',
+  'algokit-utils',
+  'types',
+  'algorand-client.js',
+));
+
+const execFileAsync = promisify(execFile);
+
+async function createCurlFetch(input, init = {}) {
+  const url = typeof input === 'string' ? input : input?.url ?? input?.href;
+  if (!url) {
+    throw new TypeError('A valid URL is required for fetch');
+  }
+
+  const method = typeof init.method === 'string' && init.method.length
+    ? init.method.toUpperCase()
+    : 'GET';
+
+  const headers = new Headers(init.headers || {});
+  if (!headers.has('accept')) {
+    headers.set('accept', 'application/json');
+  }
+  const headerArgs = [];
+  headers.forEach((value, key) => {
+    headerArgs.push('-H', `${key}: ${value}`);
+  });
+
+  const args = [
+    '--silent',
+    '--show-error',
+    '--compressed',
+    '--location',
+    '--http1.1',
+    '--connect-timeout',
+    String(DEFAULT_CURL_CONNECT_TIMEOUT_SECONDS),
+    '--max-time',
+    String(DEFAULT_CURL_TIMEOUT_SECONDS),
+    '--write-out',
+    '%{http_code}',
+  ];
+
+  if (method && method !== 'GET') {
+    args.push('-X', method);
+  }
+
+  if (init.body !== undefined && init.body !== null) {
+    let serialisedBody = init.body;
+    if (typeof serialisedBody === 'object' && !(serialisedBody instanceof Uint8Array)) {
+      if (typeof serialisedBody.toString === 'function' && serialisedBody.toString !== Object.prototype.toString) {
+        serialisedBody = serialisedBody.toString();
+      } else {
+        serialisedBody = JSON.stringify(serialisedBody);
+        if (!headers.has('content-type')) {
+          headers.set('content-type', 'application/json');
+          headerArgs.push('-H', 'content-type: application/json');
+        }
+      }
+    }
+    if (serialisedBody instanceof ArrayBuffer) {
+      serialisedBody = Buffer.from(serialisedBody).toString('utf8');
+    }
+    if (ArrayBuffer.isView(serialisedBody)) {
+      serialisedBody = Buffer.from(serialisedBody).toString('utf8');
+    }
+    args.push('--data-binary', typeof serialisedBody === 'string' ? serialisedBody : String(serialisedBody));
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'algoland-fetch-'));
+  const bodyPath = path.join(tempDir, 'body');
+  const headerPath = path.join(tempDir, 'headers');
+
+  args.push(...headerArgs);
+  args.push('--output', bodyPath);
+  args.push('--dump-header', headerPath);
+  args.push(url);
+
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync('curl', args, { encoding: 'utf8', maxBuffer: 1024 * 1024 }));
+  } catch (error) {
+    const stderr = error?.stderr ? error.stderr.toString() : '';
+    const message = stderr || error?.message || 'curl request failed';
+    const errorWithCause = new Error(message);
+    errorWithCause.cause = error;
+    throw errorWithCause;
+  }
+
+  const statusLine = stdout.trim();
+  const status = Number.parseInt(statusLine, 10);
+  if (!Number.isFinite(status)) {
+    throw new Error(`Invalid status code from curl response: ${statusLine}`);
+  }
+
+  const bodyBuffer = await readFile(bodyPath);
+  const bodyText = bodyBuffer.toString('utf8');
+  let headerText = '';
+  try {
+    headerText = await readFile(headerPath, 'utf8');
+  } catch {}
+
+  try {
+    await rm(tempDir, { recursive: true, force: true });
+  } catch {}
+
+  const responseHeaders = new Headers();
+  const headerBlocks = headerText.split(/\r?\n\r?\n/).filter(Boolean);
+  const relevantHeaders = headerBlocks.length > 0 ? headerBlocks.at(-1) : '';
+  for (const line of relevantHeaders.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || /^HTTP\//i.test(trimmed)) {
+      continue;
+    }
+    const separatorIndex = trimmed.indexOf(':');
+    if (separatorIndex === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed.slice(separatorIndex + 1).trim();
+    if (key) {
+      responseHeaders.append(key, value);
+    }
+  }
+  headers.forEach((value, key) => {
+    if (!responseHeaders.has(key)) {
+      responseHeaders.set(key, value);
+    }
+  });
+
+  if (process.env.DEBUG_CURL_FETCH === '1') {
+    console.debug('[Algoland API] curl fetch response', {
+      url,
+      status,
+      bodyPreview: bodyText.slice(0, 200),
+    });
+  }
+
+  return buildCurlResponse({ status, bodyText, bodyBuffer, headers: responseHeaders, url });
+}
+
+function buildCurlResponse({ status, bodyText, bodyBuffer, headers, url }) {
+  const response = {
+    status,
+    statusText: STATUS_CODES[status] ?? '',
+    ok: status >= 200 && status < 300,
+    headers,
+    url,
+    redirected: false,
+    type: 'basic',
+    async text() {
+      return bodyText;
+    },
+    async json() {
+      if (!bodyText) {
+        return null;
+      }
+      try {
+        return JSON.parse(bodyText);
+      } catch (error) {
+        console.warn('[Algoland API] Failed to parse JSON response', {
+          url,
+          status,
+          bodyPreview: bodyText.slice(0, 200),
+        });
+        throw error;
+      }
+    },
+    async arrayBuffer() {
+      const view = bodyBuffer instanceof Uint8Array ? bodyBuffer : Buffer.from(bodyText, 'utf8');
+      return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+    },
+    async blob() {
+      const view = bodyBuffer instanceof Uint8Array ? bodyBuffer : Buffer.from(bodyText, 'utf8');
+      return new Blob([view]);
+    },
+    clone() {
+      const clonedBuffer = bodyBuffer instanceof Uint8Array ? Buffer.from(bodyBuffer) : Buffer.from(bodyText, 'utf8');
+      return buildCurlResponse({ status, bodyText, bodyBuffer: clonedBuffer, headers: new Headers(headers), url });
+    },
+  };
+
+  return response;
+}
+
+if (typeof setDefaultResultOrder === 'function') {
+  try {
+    setDefaultResultOrder('ipv4first');
+  } catch (error) {
+    console.warn('[Algoland API] Failed to set DNS result order', { message: error?.message });
+  }
+}
+
+try {
+  setGlobalDispatcher(new Agent({ connect: { family: 4, ipv6Only: false } }));
+} catch (error) {
+  console.warn('[Algoland API] Failed to set global HTTP agent', { message: error?.message });
+}
+
+const DEFAULT_CURL_TIMEOUT_SECONDS = Number.parseInt(process.env.CURL_TIMEOUT_SECONDS || '', 10) || 30;
+const DEFAULT_CURL_CONNECT_TIMEOUT_SECONDS = Number.parseInt(
+  process.env.CURL_CONNECT_TIMEOUT_SECONDS || '',
+  10,
+) || 10;
+
+globalThis.fetch = createCurlFetch;
 
 const app = express();
 app.disable('x-powered-by');
@@ -15,10 +244,12 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const RAW_ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || 'https://emnetcm.com,https://www.emnetcm.com';
 const INDEXER_BASE = (process.env.INDEXER_BASE || 'https://mainnet-idx.algonode.cloud').replace(/\/+$/, '');
-const LANDS_INSPECTOR_BASE = (process.env.LANDS_INSPECTOR_BASE || 'https://landsinspector.pages.dev').replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = Number.parseInt(process.env.CACHE_TTL_SECONDS || '', 10) || 300;
 const MAX_RETRIES = Number.parseInt(process.env.INDEXER_MAX_RETRIES || '', 10) || 5;
 const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS || '', 10) || 500;
+
+const algorandClient = AlgorandClient.mainNet();
+const algolandSdk = new AlgolandSDK({ appId: BigInt(APP_ID), algorand: algorandClient });
 
 const RELATIVE_ID_KEYS = [
   'relativeid',
@@ -679,24 +910,6 @@ function extractProfileValue(entries, keys) {
   return undefined;
 }
 
-function isInspectorScalingKey(key) {
-  if (typeof key !== 'string') {
-    return false;
-  }
-  const normalised = key.toLowerCase();
-  if (normalised.includes('decimal') || normalised.includes('precision') || normalised.includes('fraction')) {
-    return true;
-  }
-  return (
-    normalised.includes('scale')
-    || normalised.includes('factor')
-    || normalised.includes('multiplier')
-    || normalised.includes('divisor')
-    || normalised.includes('denominator')
-    || normalised.includes('ratio')
-  );
-}
-
 function coerceNumericValue(candidate, depth = 0) {
   if (candidate === null || candidate === undefined) {
     return undefined;
@@ -1096,10 +1309,11 @@ function isIndexerNotFoundError(error) {
 }
 
 async function resolveRelativeId(relativeId) {
-  if (!Number.isFinite(relativeId) || relativeId < 0) {
+  const safeRelativeId = toSafeInteger(relativeId);
+  if (typeof safeRelativeId !== 'number' || safeRelativeId < 0) {
     return undefined;
   }
-  const cacheKey = `relative:${relativeId}`;
+  const cacheKey = `relative:${safeRelativeId}`;
   const cached = idLookupCache.get(cacheKey);
   if (typeof cached === 'string' && cached) {
     return cached;
@@ -1108,388 +1322,26 @@ async function resolveRelativeId(relativeId) {
     return undefined;
   }
 
-  let nextToken;
-  const baseParams = {
-    limit: 100,
-    'include-all': false,
-  };
-
   try {
-    do {
-      const params = { ...baseParams };
-      if (nextToken) {
-        params.next = nextToken;
-      }
-      const page = await indexerRequest(`/v2/applications/${APP_ID}/accounts`, params);
-      const accounts = Array.isArray(page.accounts) ? page.accounts : [];
-      for (const account of accounts) {
-        const address = normaliseAddress(account.address);
-        if (!address) {
-          continue;
-        }
-        const localStates = Array.isArray(account['apps-local-state'])
-          ? account['apps-local-state']
-          : [];
-        const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
-        if (!appState || !Array.isArray(appState['key-value'])) {
-          continue;
-        }
-        const entries = decodeLocalStateEntries(appState['key-value']);
-        if (entries.length === 0) {
-          continue;
-        }
-        const value = coerceNumericValue(extractFirstValue(entries, RELATIVE_ID_KEYS));
-        if (value !== undefined) {
-          idLookupCache.set(`relative:${value}`, address);
-          if (value === relativeId) {
-            return address;
-          }
-        }
-      }
-      nextToken = page['next-token'] || null;
-    } while (nextToken);
+    const user = await algolandSdk.getUser({ userId: BigInt(safeRelativeId) });
+    if (!user || !user.address) {
+      idLookupCache.set(cacheKey, null, 60);
+      return undefined;
+    }
+    const address = normaliseAddress(user.address);
+    if (!address) {
+      idLookupCache.set(cacheKey, null, 60);
+      return undefined;
+    }
+    idLookupCache.set(cacheKey, address);
+    return address;
   } catch (error) {
     console.warn('[Algoland API] Failed to resolve relative ID', {
-      relativeId,
+      relativeId: safeRelativeId,
       message: error.message,
     });
     throw error;
   }
-
-  idLookupCache.set(cacheKey, null, 60);
-  return undefined;
-}
-
-async function fetchLandsInspectorProfile(address) {
-  const url = new URL('/api/user', `${LANDS_INSPECTOR_BASE}/`);
-  url.searchParams.set('user', address);
-
-  const start = performance.now();
-  let response;
-  try {
-    response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-      },
-    });
-  } catch (error) {
-    console.error('[Algoland API] Lands Inspector request failed', {
-      address,
-      message: error.message,
-    });
-    throw error;
-  }
-
-  const durationMs = performance.now() - start;
-
-  if (response.status === 404 || response.status === 204) {
-    console.info('[Algoland API] Lands Inspector returned no content', {
-      address,
-      status: response.status,
-      durationMs,
-    });
-    return null;
-  }
-
-  if (!response.ok) {
-    console.error('[Algoland API] Lands Inspector responded with error', {
-      address,
-      status: response.status,
-      durationMs,
-    });
-    const message = `Lands Inspector responded with status ${response.status}`;
-    throw new Error(message);
-  }
-
-  try {
-    const payload = await response.json();
-    if (!payload || typeof payload !== 'object') {
-      console.info('[Algoland API] Lands Inspector provided empty payload', {
-        address,
-        durationMs,
-      });
-      return null;
-    }
-    console.info('[Algoland API] Lands Inspector payload received', {
-      address,
-      durationMs,
-      keys: Object.keys(payload),
-    });
-    return payload;
-  } catch (error) {
-    console.warn('[Algoland API] Failed to parse Lands Inspector payload', {
-      address,
-      message: error.message,
-    });
-    return null;
-  }
-}
-
-function deriveInspectorScaleHint(object) {
-  if (!object || typeof object !== 'object' || Array.isArray(object)) {
-    return 1;
-  }
-
-  for (const [key, rawValue] of Object.entries(object)) {
-    if (rawValue === null || rawValue === undefined) {
-      continue;
-    }
-    const normalisedKey = key.toLowerCase();
-    if (
-      normalisedKey.includes('decimal')
-      || normalisedKey.includes('precision')
-      || normalisedKey.includes('fraction')
-    ) {
-      const decimals = toSafeInteger(rawValue);
-      if (typeof decimals === 'number' && decimals > 0 && decimals <= 12) {
-        const divisor = 10 ** decimals;
-        if (Number.isFinite(divisor) && divisor > 1) {
-          return divisor;
-        }
-      }
-      continue;
-    }
-
-    if (
-      normalisedKey.includes('scale')
-      || normalisedKey.includes('factor')
-      || normalisedKey.includes('multiplier')
-      || normalisedKey.includes('divisor')
-      || normalisedKey.includes('denominator')
-      || normalisedKey.includes('ratio')
-    ) {
-      const divisor = toSafeInteger(rawValue);
-      if (typeof divisor === 'number' && divisor > 1 && divisor <= 1_000_000_000_000) {
-        return divisor;
-      }
-    }
-  }
-
-  return 1;
-}
-
-function determineInspectorScale(value) {
-  if (!value || typeof value !== 'object') {
-    return 1;
-  }
-
-  const queue = [value];
-  const visited = new Set();
-
-  while (queue.length > 0 && visited.size < 50) {
-    const current = queue.shift();
-    if (!current || typeof current !== 'object' || visited.has(current)) {
-      continue;
-    }
-    visited.add(current);
-
-    if (Array.isArray(current)) {
-      current
-        .filter((item) => item && typeof item === 'object')
-        .forEach((item) => {
-          if (!visited.has(item)) {
-            queue.push(item);
-          }
-        });
-      continue;
-    }
-
-    const scale = deriveInspectorScaleHint(current);
-    if (scale > 1) {
-      return scale;
-    }
-
-    Object.values(current).forEach((value) => {
-      if (value && typeof value === 'object' && !visited.has(value)) {
-        queue.push(value);
-      }
-    });
-  }
-
-  return 1;
-}
-
-function normaliseInspectorNumber(value) {
-  const numeric = coerceNumericValue(value);
-  if (typeof numeric !== 'number' || !Number.isFinite(numeric)) {
-    return null;
-  }
-
-  if (value && typeof value === 'object') {
-    const scale = determineInspectorScale(value);
-    if (scale > 1) {
-      const scaled = numeric / scale;
-      if (Number.isFinite(scaled)) {
-        return scaled;
-      }
-      return null;
-    }
-  }
-
-  return numeric;
-}
-
-function normaliseInspectorList(value) {
-  if (value === null || value === undefined) {
-    return [];
-  }
-  if (value instanceof Set) {
-    return normaliseInspectorList(Array.from(value));
-  }
-  if (Array.isArray(value) || typeof value === 'string') {
-    return coerceListValue(value)
-      .map((item) => {
-        if (item === null || item === undefined) {
-          return null;
-        }
-        if (typeof item === 'string') {
-          const trimmed = item.trim();
-          return trimmed.length > 0 ? trimmed : null;
-        }
-        if (typeof item === 'number' && Number.isFinite(item)) {
-          return item;
-        }
-        return null;
-      })
-      .filter((item) => item !== null);
-  }
-  if (typeof value === 'object') {
-    const candidateKeys = [
-      'list',
-      'values',
-      'items',
-      'entries',
-      'weeks',
-      'history',
-      'ids',
-      'addresses',
-      'records',
-      'data',
-      'prizes',
-    ];
-    for (const key of candidateKeys) {
-      if (key in value) {
-        const nested = normaliseInspectorList(value[key]);
-        if (nested.length > 0) {
-          return nested;
-        }
-      }
-    }
-  }
-  return [];
-}
-
-function normaliseInspectorKeyName(name) {
-  if (typeof name !== 'string') {
-    return '';
-  }
-  return name.replace(/[^a-z0-9]/gi, '').toLowerCase();
-}
-
-function isMeaningfulInspectorValue(value) {
-  if (value === null || value === undefined) {
-    return false;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  if (typeof value === 'string') {
-    return value.trim().length > 0;
-  }
-  return true;
-}
-
-function extractInspectorValue(payload, keyCandidates) {
-  if (!payload || typeof payload !== 'object') {
-    return undefined;
-  }
-  const queue = [payload];
-  const visited = new Set();
-  const normalisedCandidates = keyCandidates
-    .map((candidate) => normaliseInspectorKeyName(candidate))
-    .filter((candidate) => candidate.length > 0);
-  let fallbackValue;
-  let hasFallback = false;
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || typeof current !== 'object' || visited.has(current)) {
-      continue;
-    }
-    visited.add(current);
-    const lookup = new Map();
-    Object.entries(current).forEach(([key, value]) => {
-      const normalisedKey = normaliseInspectorKeyName(key);
-      if (normalisedKey && !lookup.has(normalisedKey)) {
-        lookup.set(normalisedKey, value);
-      }
-    });
-    for (const candidate of normalisedCandidates) {
-      if (lookup.has(candidate)) {
-        const value = lookup.get(candidate);
-        if (isMeaningfulInspectorValue(value)) {
-          return value;
-        }
-        if (!hasFallback) {
-          fallbackValue = value;
-          hasFallback = true;
-        }
-      }
-    }
-    Object.values(current).forEach((value) => {
-      if (Array.isArray(value)) {
-        value
-          .filter((item) => item && typeof item === 'object')
-          .forEach((item) => {
-            if (!visited.has(item)) {
-              queue.push(item);
-            }
-          });
-        return;
-      }
-      if (value && typeof value === 'object') {
-        queue.push(value);
-      }
-    });
-  }
-  if (hasFallback) {
-    return fallbackValue;
-  }
-  return undefined;
-}
-
-function pickFirstInspectorList(...candidates) {
-  for (const candidate of candidates) {
-    const list = normaliseInspectorList(candidate);
-    if (list.length > 0) {
-      return list;
-    }
-  }
-  return [];
-}
-
-function summariseInspectorPayload(payload) {
-  if (!payload || typeof payload !== 'object') {
-    return null;
-  }
-  const summary = {};
-  Object.entries(payload).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      summary[key] = `array(${value.length})`;
-      return;
-    }
-    if (value && typeof value === 'object') {
-      summary[key] = `object(${Object.keys(value).length})`;
-      return;
-    }
-    if (value === null) {
-      summary[key] = 'null';
-      return;
-    }
-    summary[key] = typeof value;
-  });
-  return summary;
 }
 
 function createEmptyProfile(address) {
@@ -1519,151 +1371,232 @@ function createEmptyProfile(address) {
     hasParticipation: false,
     status: 'no_data',
     statusMessage: 'We couldn\'t find any Algoland activity for that wallet yet.',
-    source: LANDS_INSPECTOR_BASE,
+    source: '@algorandfoundation/algoland-sdk',
     updatedAt: now,
     fetchedAt: now,
     raw: null,
   };
 }
 
-function buildInspectorProfile(address, payload) {
+async function fetchAlgolandProfile(address) {
+  try {
+    const user = await algolandSdk.getUser({ userAddress: address });
+    if (!user) {
+      return null;
+    }
+    let referralAddresses = [];
+    try {
+      referralAddresses = await algolandSdk.getUserReferrals({ userAddress: address });
+    } catch (error) {
+      console.warn('[Algoland API] Failed to resolve referral addresses', {
+        address,
+        message: error.message,
+      });
+      referralAddresses = [];
+    }
+    return { user, referrals: referralAddresses };
+  } catch (error) {
+    const logError = error && typeof error === 'object'
+      ? { message: error.message, stack: error.stack, cause: error.cause }
+      : { message: String(error) };
+    console.error('[Algoland API] Failed to fetch Algoland profile', {
+      address,
+      error: logError,
+    });
+    throw error;
+  }
+}
+
+function buildSdkProfile(address, algolandUser, referralAddresses) {
   const now = new Date().toISOString();
-  const relativeId = toSafeInteger(extractInspectorValue(payload, RELATIVE_ID_KEYS));
-  const referrerId = toSafeInteger(extractInspectorValue(payload, REFERRER_ID_KEYS));
-  const pointsSource = extractInspectorValue(payload, POINT_KEYS);
-  const pointsRawValue = coerceNumericValue(pointsSource);
-  const points = normaliseInspectorNumber(pointsSource) ?? 0;
-  const redeemedPointsSource = extractInspectorValue(payload, REDEEMED_POINT_KEYS);
-  const redeemedPoints = normaliseInspectorNumber(redeemedPointsSource) ?? 0;
-  const completedQuests = normaliseInspectorList(extractInspectorValue(payload, QUEST_LIST_KEYS));
-  const completedChallenges = normaliseInspectorList(
-    extractInspectorValue(payload, CHALLENGE_LIST_KEYS),
-  );
-  const completableChallenges = normaliseInspectorList(
-    extractInspectorValue(payload, COMPLETABLE_CHALLENGE_KEYS),
-  );
-  const weeklyDrawEligibilitySource = extractInspectorValue(payload, WEEKLY_DRAW_KEYS);
-  const weeklyDrawsRaw = extractInspectorValue(payload, ['weeklydraws']);
-  const weeklyDrawContainer = [weeklyDrawsRaw, weeklyDrawEligibilitySource]
-    .find((value) => value && typeof value === 'object' && !Array.isArray(value))
-    || null;
-  const weeklyDrawEligibility = pickFirstInspectorList(
-    weeklyDrawContainer?.weeks,
-    weeklyDrawContainer?.list,
-    weeklyDrawContainer?.history,
-    weeklyDrawEligibilitySource,
-    weeklyDrawsRaw,
-  );
-  const availablePrizes = pickFirstInspectorList(
-    extractInspectorValue(payload, AVAILABLE_DRAW_PRIZE_KEYS),
-    weeklyDrawContainer?.available,
-    weeklyDrawContainer?.availablePrizes,
-    weeklyDrawContainer?.availablePrizeAssetIds,
-  );
-  const claimedPrizes = pickFirstInspectorList(
-    extractInspectorValue(payload, CLAIMED_DRAW_PRIZE_KEYS),
-    weeklyDrawContainer?.claimed,
-    weeklyDrawContainer?.claimedPrizes,
-    weeklyDrawContainer?.claimedPrizeAssetIds,
-  );
-  const referrals = pickFirstInspectorList(extractInspectorValue(payload, REFERRAL_LIST_KEYS));
-  const referralsCountCandidate = normaliseInspectorNumber(
-    extractInspectorValue(payload, REFERRAL_COUNT_KEYS),
-  );
-  const weeklyDrawEntriesCandidate = normaliseInspectorNumber(
-    extractInspectorValue(payload, WEEKLY_DRAW_ENTRY_KEYS)
-      ?? weeklyDrawContainer?.entries
-      ?? weeklyDrawContainer?.count
-      ?? weeklyDrawContainer?.total,
-  );
-  const weeklyDrawEntries = weeklyDrawEntriesCandidate ?? weeklyDrawEligibility.length;
-  const weeklyEligible = typeof weeklyDrawContainer?.eligible === 'boolean'
-    ? weeklyDrawContainer.eligible
-    : weeklyDrawEligibility.length > 0;
+  const completedQuests = formatQuestList(algolandUser?.completedQuests);
+  const completedChallenges = formatChallengeList(algolandUser?.completedChallenges);
+  const completableChallenges = formatChallengeList(algolandUser?.completableChallenges);
+  const weeklyEligibilityRaw = normaliseNumericList(algolandUser?.weeklyDrawEligibility);
+  const weeklyEligibility = formatWeeklyList(weeklyEligibilityRaw);
+  const availablePrizes = formatAssetIdList(algolandUser?.availableDrawPrizeAssetIds);
+  const claimedPrizes = formatAssetIdList(algolandUser?.claimedDrawPrizeAssetIds);
+  const referralAddressesList = Array.isArray(referralAddresses)
+    ? referralAddresses.filter(isAlgorandAddress)
+    : [];
+  const referralIds = normaliseNumericList(algolandUser?.referrals);
+  const referrals = referralAddressesList.length > 0
+    ? referralAddressesList
+    : formatRelativeIdList(referralIds);
+  const referralsCount = referralAddressesList.length > 0
+    ? referralAddressesList.length
+    : toSafeInteger(algolandUser?.numReferrals) ?? referralIds.length;
+
+  const pointsRaw = toSafeNumber(algolandUser?.points);
+  const pointsDisplay = toSafeNumber(algolandUser?.displayPoints)
+    ?? (typeof pointsRaw === 'number' ? pointsRaw * 100 : null);
+  const redeemedPointsRaw = toSafeNumber(algolandUser?.redeemedPoints);
+  const redeemedPointsDisplay = toSafeNumber(algolandUser?.displayRedeemedPoints)
+    ?? (typeof redeemedPointsRaw === 'number' ? redeemedPointsRaw * 100 : null);
+  const referralPointsRaw = toSafeNumber(algolandUser?.referralPoints);
+  const referralPointsDisplay = toSafeNumber(algolandUser?.displayReferralPoints)
+    ?? (typeof referralPointsRaw === 'number' ? referralPointsRaw * 100 : null);
 
   const hasParticipation = Boolean(
-    (points ?? 0) > 0
-      || redeemedPoints > 0
+    (pointsRaw ?? 0) > 0
+      || (redeemedPointsRaw ?? 0) > 0
       || completedQuests.length > 0
       || completedChallenges.length > 0
       || referrals.length > 0
-      || weeklyDrawEligibility.length > 0
-      || weeklyDrawEntries > 0
+      || weeklyEligibility.length > 0
       || availablePrizes.length > 0
       || claimedPrizes.length > 0,
   );
 
-  let statusMessage = null;
-  if (typeof payload?.statusMessage === 'string' && payload.statusMessage.trim().length > 0) {
-    statusMessage = payload.statusMessage.trim();
-  } else if (typeof payload?.message === 'string' && payload.message.trim().length > 0) {
-    statusMessage = payload.message.trim();
-  } else if (typeof payload?.note === 'string' && payload.note.trim().length > 0) {
-    statusMessage = payload.note.trim();
-  }
-
-  if (!hasParticipation && !statusMessage) {
-    statusMessage = 'We couldn\'t find any Algoland activity for that wallet yet.';
-  }
-
-  const weeklyDraws = {
-    eligible: weeklyEligible,
-    entries: weeklyDrawEntries,
-    weeks: weeklyDrawEligibility,
-    availablePrizeAssetIds: availablePrizes,
-    claimedPrizeAssetIds: claimedPrizes,
-  };
-
   const profile = {
     resolvedAddress: address,
-    relativeId: Number.isFinite(relativeId) ? relativeId : null,
-    referrerId: Number.isFinite(referrerId) ? referrerId : null,
-    points,
-    pointsRaw: typeof pointsRawValue === 'number' && Number.isFinite(pointsRawValue)
-      ? pointsRawValue
-      : points,
-    redeemedPoints,
+    address,
+    relativeId: toSafeInteger(algolandUser?.relativeId) ?? null,
+    referrerId: toSafeInteger(algolandUser?.referrerId) ?? null,
+    points: pointsDisplay,
+    pointsRaw,
+    redeemedPoints: redeemedPointsDisplay,
+    redeemedPointsRaw,
+    referralPoints: referralPointsDisplay,
+    referralPointsRaw,
     completedQuests,
     completedChallenges,
     completableChallenges,
-    weeklyDrawEligibility,
-    weeklyDraws,
+    weeklyDrawEligibility: weeklyEligibility,
+    weeklyDraws: {
+      eligible: weeklyEligibility.length > 0,
+      entries: weeklyEligibility.length,
+      weeks: weeklyEligibility,
+      availablePrizeAssetIds: availablePrizes,
+      claimedPrizeAssetIds: claimedPrizes,
+    },
     availableDrawPrizeAssetIds: availablePrizes,
     claimedDrawPrizeAssetIds: claimedPrizes,
     referrals,
-    referralsCount: Number.isFinite(referralsCountCandidate)
-      ? referralsCountCandidate
-      : referrals.length,
+    referralsCount,
+    referralsRelativeIds: referralIds,
     hasParticipation,
     status: hasParticipation ? 'ok' : 'no_data',
-    statusMessage,
-    source: LANDS_INSPECTOR_BASE,
-    updatedAt:
-      typeof payload?.updatedAt === 'string' && payload.updatedAt.trim().length > 0
-        ? payload.updatedAt
-        : now,
+    statusMessage: hasParticipation
+      ? null
+      : 'We couldn\'t find any Algoland activity for that wallet yet.',
+    source: '@algorandfoundation/algoland-sdk',
+    updatedAt: now,
     fetchedAt: now,
-    raw: payload,
+    raw: serialiseAlgolandUser(algolandUser, referralAddressesList),
   };
 
-  if (!hasParticipation) {
-    console.info('[Algoland API] Lands Inspector payload contained no recognised participation data', {
-      address,
-      derived: {
-        points,
-        redeemedPoints,
-        completedQuests: completedQuests.length,
-        completedChallenges: completedChallenges.length,
-        weeklyDrawWeeks: weeklyDrawEligibility.length,
-        referrals: referrals.length,
-        availablePrizes: availablePrizes.length,
-        claimedPrizes: claimedPrizes.length,
-      },
-      summary: summariseInspectorPayload(payload),
-    });
-  }
-
   return profile;
+}
+
+function formatQuestList(values) {
+  return normaliseNumericList(values).map((questId) => `Quest ${questId}`);
+}
+
+function formatChallengeList(values) {
+  return normaliseNumericList(values).map((challengeId) => `Challenge ${challengeId}`);
+}
+
+function formatWeeklyList(values) {
+  return normaliseNumericList(values).map((challengeId) => `Challenge ${challengeId}`);
+}
+
+function formatRelativeIdList(values) {
+  return normaliseNumericList(values).map((id) => `Relative ID ${id}`);
+}
+
+function formatAssetIdList(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return values
+    .map((value) => {
+      if (typeof value === 'bigint') {
+        return `Asset ${value.toString()}`;
+      }
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? `Asset ${Math.trunc(value)}` : null;
+      }
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return `Asset ${value.trim()}`;
+      }
+      return null;
+    })
+    .filter((item) => typeof item === 'string');
+}
+
+function convertBigIntList(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return values
+    .map((value) => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(Math.trunc(value));
+      }
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+      return null;
+    })
+    .filter((item) => typeof item === 'string');
+}
+
+function serialiseAlgolandUser(algolandUser, referralAddresses) {
+  if (!algolandUser) {
+    return null;
+  }
+  return {
+    address: normaliseAddress(algolandUser.address) || null,
+    relativeId: toSafeInteger(algolandUser.relativeId) ?? null,
+    referrerId: toSafeInteger(algolandUser.referrerId) ?? null,
+    numReferrals: toSafeInteger(algolandUser.numReferrals) ?? null,
+    referrals: normaliseNumericList(algolandUser.referrals),
+    referralAddresses: Array.isArray(referralAddresses)
+      ? referralAddresses.filter(isAlgorandAddress)
+      : [],
+    points: toSafeNumber(algolandUser.points),
+    displayPoints: toSafeNumber(algolandUser.displayPoints),
+    redeemedPoints: toSafeNumber(algolandUser.redeemedPoints),
+    displayRedeemedPoints: toSafeNumber(algolandUser.displayRedeemedPoints),
+    referralPoints: toSafeNumber(algolandUser.referralPoints),
+    displayReferralPoints: toSafeNumber(algolandUser.displayReferralPoints),
+    completedQuests: normaliseNumericList(algolandUser.completedQuests),
+    completedChallenges: normaliseNumericList(algolandUser.completedChallenges),
+    completableChallenges: normaliseNumericList(algolandUser.completableChallenges),
+    weeklyDrawEligibility: normaliseNumericList(algolandUser.weeklyDrawEligibility),
+    availableDrawPrizeAssetIds: convertBigIntList(algolandUser.availableDrawPrizeAssetIds),
+    claimedDrawPrizeAssetIds: convertBigIntList(algolandUser.claimedDrawPrizeAssetIds),
+  };
+}
+
+function normaliseNumericList(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return values
+    .map((value) => toSafeInteger(value))
+    .filter((value) => typeof value === 'number');
+}
+
+function toSafeNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'bigint') {
+    const converted = Number(value);
+    return Number.isFinite(converted) ? converted : null;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
 }
 
 async function getProfileForAddress(address) {
@@ -1677,19 +1610,19 @@ async function getProfileForAddress(address) {
     return { ...cached };
   }
 
-  let inspectorPayload;
+  let sdkPayload;
   try {
-    inspectorPayload = await fetchLandsInspectorProfile(normalised);
+    sdkPayload = await fetchAlgolandProfile(normalised);
   } catch (error) {
-    console.error('[Algoland API] Lands Inspector lookup failed', {
+    console.error('[Algoland API] Algoland SDK lookup failed', {
       address: normalised,
       message: error.message,
     });
     throw createProfileError('profile_unavailable', 'Unable to load Algoland profile at this time.', 502);
   }
 
-  const profile = inspectorPayload
-    ? buildInspectorProfile(normalised, inspectorPayload)
+  const profile = sdkPayload
+    ? buildSdkProfile(normalised, sdkPayload.user, sdkPayload.referrals)
     : createEmptyProfile(normalised);
 
   profileCache.set(cacheKey, profile);
@@ -2050,7 +1983,6 @@ if (process.env.NODE_ENV !== 'test') {
 
 export default app;
 export {
-  extractInspectorValue,
-  buildInspectorProfile,
+  buildSdkProfile,
   createEmptyProfile,
 };
