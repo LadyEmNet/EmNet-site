@@ -673,6 +673,24 @@ function extractProfileValue(entries, keys) {
   return undefined;
 }
 
+function isInspectorScalingKey(key) {
+  if (typeof key !== 'string') {
+    return false;
+  }
+  const normalised = key.toLowerCase();
+  if (normalised.includes('decimal') || normalised.includes('precision') || normalised.includes('fraction')) {
+    return true;
+  }
+  return (
+    normalised.includes('scale')
+    || normalised.includes('factor')
+    || normalised.includes('multiplier')
+    || normalised.includes('divisor')
+    || normalised.includes('denominator')
+    || normalised.includes('ratio')
+  );
+}
+
 function coerceNumericValue(candidate, depth = 0) {
   if (candidate === null || candidate === undefined) {
     return undefined;
@@ -709,6 +727,16 @@ function coerceNumericValue(candidate, depth = 0) {
         if (nested !== undefined) {
           return nested;
         }
+      }
+    }
+    const seenKeys = new Set(keysToCheck);
+    for (const [key, value] of Object.entries(candidate)) {
+      if (seenKeys.has(key) || isInspectorScalingKey(key)) {
+        continue;
+      }
+      const nested = coerceNumericValue(value, depth + 1);
+      if (nested !== undefined) {
+        return nested;
       }
     }
   }
@@ -1192,12 +1220,108 @@ async function fetchLandsInspectorProfile(address) {
   }
 }
 
+function deriveInspectorScaleHint(object) {
+  if (!object || typeof object !== 'object' || Array.isArray(object)) {
+    return 1;
+  }
+
+  for (const [key, rawValue] of Object.entries(object)) {
+    if (rawValue === null || rawValue === undefined) {
+      continue;
+    }
+    const normalisedKey = key.toLowerCase();
+    if (
+      normalisedKey.includes('decimal')
+      || normalisedKey.includes('precision')
+      || normalisedKey.includes('fraction')
+    ) {
+      const decimals = toSafeInteger(rawValue);
+      if (typeof decimals === 'number' && decimals > 0 && decimals <= 12) {
+        const divisor = 10 ** decimals;
+        if (Number.isFinite(divisor) && divisor > 1) {
+          return divisor;
+        }
+      }
+      continue;
+    }
+
+    if (
+      normalisedKey.includes('scale')
+      || normalisedKey.includes('factor')
+      || normalisedKey.includes('multiplier')
+      || normalisedKey.includes('divisor')
+      || normalisedKey.includes('denominator')
+      || normalisedKey.includes('ratio')
+    ) {
+      const divisor = toSafeInteger(rawValue);
+      if (typeof divisor === 'number' && divisor > 1 && divisor <= 1_000_000_000_000) {
+        return divisor;
+      }
+    }
+  }
+
+  return 1;
+}
+
+function determineInspectorScale(value) {
+  if (!value || typeof value !== 'object') {
+    return 1;
+  }
+
+  const queue = [value];
+  const visited = new Set();
+
+  while (queue.length > 0 && visited.size < 50) {
+    const current = queue.shift();
+    if (!current || typeof current !== 'object' || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (Array.isArray(current)) {
+      current
+        .filter((item) => item && typeof item === 'object')
+        .forEach((item) => {
+          if (!visited.has(item)) {
+            queue.push(item);
+          }
+        });
+      continue;
+    }
+
+    const scale = deriveInspectorScaleHint(current);
+    if (scale > 1) {
+      return scale;
+    }
+
+    Object.values(current).forEach((value) => {
+      if (value && typeof value === 'object' && !visited.has(value)) {
+        queue.push(value);
+      }
+    });
+  }
+
+  return 1;
+}
+
 function normaliseInspectorNumber(value) {
   const numeric = coerceNumericValue(value);
-  if (typeof numeric === 'number' && Number.isFinite(numeric)) {
-    return numeric;
+  if (typeof numeric !== 'number' || !Number.isFinite(numeric)) {
+    return null;
   }
-  return null;
+
+  if (value && typeof value === 'object') {
+    const scale = determineInspectorScale(value);
+    if (scale > 1) {
+      const scaled = numeric / scale;
+      if (Number.isFinite(scaled)) {
+        return scaled;
+      }
+      return null;
+    }
+  }
+
+  return numeric;
 }
 
 function normaliseInspectorList(value) {
@@ -1400,10 +1524,11 @@ function buildInspectorProfile(address, payload) {
   const now = new Date().toISOString();
   const relativeId = toSafeInteger(extractInspectorValue(payload, RELATIVE_ID_KEYS));
   const referrerId = toSafeInteger(extractInspectorValue(payload, REFERRER_ID_KEYS));
-  const points = normaliseInspectorNumber(extractInspectorValue(payload, POINT_KEYS)) ?? 0;
-  const redeemedPoints = normaliseInspectorNumber(
-    extractInspectorValue(payload, REDEEMED_POINT_KEYS),
-  ) ?? 0;
+  const pointsSource = extractInspectorValue(payload, POINT_KEYS);
+  const pointsRawValue = coerceNumericValue(pointsSource);
+  const points = normaliseInspectorNumber(pointsSource) ?? 0;
+  const redeemedPointsSource = extractInspectorValue(payload, REDEEMED_POINT_KEYS);
+  const redeemedPoints = normaliseInspectorNumber(redeemedPointsSource) ?? 0;
   const completedQuests = normaliseInspectorList(extractInspectorValue(payload, QUEST_LIST_KEYS));
   const completedChallenges = normaliseInspectorList(
     extractInspectorValue(payload, CHALLENGE_LIST_KEYS),
@@ -1488,7 +1613,9 @@ function buildInspectorProfile(address, payload) {
     relativeId: Number.isFinite(relativeId) ? relativeId : null,
     referrerId: Number.isFinite(referrerId) ? referrerId : null,
     points,
-    pointsRaw: points,
+    pointsRaw: typeof pointsRawValue === 'number' && Number.isFinite(pointsRawValue)
+      ? pointsRawValue
+      : points,
     redeemedPoints,
     completedQuests,
     completedChallenges,
