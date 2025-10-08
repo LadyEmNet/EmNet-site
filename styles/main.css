@@ -1946,6 +1946,9 @@ body.lookup-modal-open {
 .lookup-modal__stat-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 6px;
   padding: 14px 16px;
   border-radius: 12px;
@@ -1964,12 +1967,17 @@ body.lookup-modal-open {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  width: 100%;
+  word-break: break-word;
 }
 
 .lookup-modal__stat-value {
-  font-size: 1.4rem;
+  font-size: clamp(1.05rem, 4vw, 1.4rem);
   font-weight: 600;
+  line-height: 1.2;
   color: rgba(255, 255, 255, 0.95);
+  word-break: break-word;
 }
 
 .lookup-modal__section--progress {
@@ -1998,6 +2006,13 @@ body.lookup-modal-open {
   padding: 0;
 }
 
+.lookup-modal__collapsible-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .lookup-modal__collapsible-summary:focus-visible {
   outline: 2px solid rgba(83, 240, 227, 0.6);
   outline-offset: 4px;
@@ -2013,7 +2028,8 @@ body.lookup-modal-open {
   transform: rotate(180deg);
 }
 
-.lookup-modal__collapsible .lookup-modal__progress-list {
+.lookup-modal__collapsible .lookup-modal__progress-list,
+.lookup-modal__collapsible .lookup-modal__referral-tags {
   margin-top: 12px;
 }
 

@@ -932,24 +932,56 @@
       ? 'No referrals recorded yet.'
       : 'Referral data is not available yet.';
     container.appendChild(
-      createReferralSection('Referrals', referralsList, referralsEmptyMessage, { icon: '👥' })
+      createReferralSection('Referrals', referralsList, referralsEmptyMessage, {
+        icon: '👥',
+        total: referralsCount,
+      })
     );
 
     const weeklySection = createLookupSection('Weekly Draws', {
       icon: '🎟️',
       modifiers: ['highlight'],
     });
-    const eligibleWeeks =
-      typeof weeklyDrawDetails.eligibleCount === 'number'
-        ? weeklyDrawDetails.eligibleCount
-        : typeof weeklyDrawDetails.totalCount === 'number' && weeklyDrawDetails.totalCount > 0
-          ? weeklyDrawDetails.totalCount
-          : null;
-    if (typeof eligibleWeeks === 'number') {
+    const completedBadgeCount = completedChallenges.length;
+    const eligibleWeeksCandidates = [
+      typeof weeklyDrawDetails.eligibleCount === 'number' ? weeklyDrawDetails.eligibleCount : null,
+      completedBadgeCount > 0 ? completedBadgeCount : null,
+    ];
+    const eligibleWeeks = eligibleWeeksCandidates.reduce((max, value) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.max(max, value);
+      }
+      return max;
+    }, 0);
+    const totalWeekCandidates = [
+      typeof weeklyDrawDetails.totalCount === 'number' ? weeklyDrawDetails.totalCount : null,
+      Array.isArray(weeklyDrawDetails.list) ? weeklyDrawDetails.list.length : null,
+      eligibleWeeks,
+      completedBadgeCount > 0 ? completedBadgeCount : null,
+    ];
+    const totalWeeks = totalWeekCandidates.reduce((max, value) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return Math.max(max, value);
+      }
+      return max;
+    }, 0);
+
+    if (totalWeeks > 0) {
+      const eligibilityNote = document.createElement('p');
+      eligibilityNote.className = 'lookup-modal__progress-note';
+      eligibilityNote.textContent = `${numberFormatter.format(eligibleWeeks)} of ${numberFormatter.format(totalWeeks)} weeks eligible`;
+      weeklySection.appendChild(eligibilityNote);
+    }
+
+    if (weeklyDrawDetails.text) {
+      weeklySection.appendChild(createLookupText(weeklyDrawDetails.text));
+    }
+
+    if (Array.isArray(weeklyDrawDetails.list) && weeklyDrawDetails.list.length > 0) {
       weeklySection.appendChild(
-        createLookupText(`Total eligible weeks: ${numberFormatter.format(eligibleWeeks)}`)
+        createLookupList(weeklyDrawDetails.list, 'No weekly draw entries recorded yet.')
       );
-    } else {
+    } else if (totalWeeks === 0) {
       weeklySection.appendChild(
         createLookupText(
           weeklyDrawDetails.emptyMessage || 'Weekly draw eligibility data is not available yet.',
@@ -1120,6 +1152,28 @@
       modifiers: ['referrals'],
     });
     if (Array.isArray(referrals) && referrals.length > 0) {
+      const collapsible = document.createElement('details');
+      collapsible.className = 'lookup-modal__collapsible';
+
+      const summary = document.createElement('summary');
+      summary.className = 'lookup-modal__collapsible-summary';
+
+      const label = document.createElement('span');
+      label.className = 'lookup-modal__collapsible-label';
+      const referralsTotal = typeof options.total === 'number' && Number.isFinite(options.total)
+        ? options.total
+        : referrals.length;
+      label.textContent = `${numberFormatter.format(referralsTotal)} referral${referralsTotal === 1 ? '' : 's'}`;
+      summary.appendChild(label);
+
+      const icon = document.createElement('span');
+      icon.className = 'lookup-modal__collapsible-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '▾';
+      summary.appendChild(icon);
+
+      collapsible.appendChild(summary);
+
       const wrapper = document.createElement('div');
       wrapper.className = 'lookup-modal__referral-tags';
       referrals.forEach((referral) => {
@@ -1128,7 +1182,8 @@
         tag.textContent = referral;
         wrapper.appendChild(tag);
       });
-      section.appendChild(wrapper);
+      collapsible.appendChild(wrapper);
+      section.appendChild(collapsible);
     } else {
       section.appendChild(createLookupText(emptyMessage, 'lookup-modal__empty'));
     }
