@@ -14,6 +14,7 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const RAW_ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || 'https://emnetcm.com,https://www.emnetcm.com';
 const INDEXER_BASE = (process.env.INDEXER_BASE || 'https://mainnet-idx.algonode.cloud').replace(/\/+$/, '');
+const LANDS_INSPECTOR_BASE = (process.env.LANDS_INSPECTOR_BASE || 'https://landsinspector.pages.dev').replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = Number.parseInt(process.env.CACHE_TTL_SECONDS || '', 10) || 300;
 const MAX_RETRIES = Number.parseInt(process.env.INDEXER_MAX_RETRIES || '', 10) || 5;
 const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS || '', 10) || 500;
@@ -1085,6 +1086,185 @@ async function resolveRelativeId(relativeId) {
   return undefined;
 }
 
+async function fetchLandsInspectorProfile(address) {
+  const url = new URL('/api/user', `${LANDS_INSPECTOR_BASE}/`);
+  url.searchParams.set('user', address);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+    },
+  });
+
+  if (response.status === 404 || response.status === 204) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const message = `Lands Inspector responded with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  try {
+    const payload = await response.json();
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    return payload;
+  } catch (error) {
+    console.warn('[Algoland API] Failed to parse Lands Inspector payload', {
+      message: error.message,
+    });
+    return null;
+  }
+}
+
+function normaliseInspectorNumber(value) {
+  const numeric = coerceNumericValue(value);
+  if (typeof numeric === 'number' && Number.isFinite(numeric)) {
+    return numeric;
+  }
+  return null;
+}
+
+function normaliseInspectorList(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (item === null || item === undefined) {
+        return null;
+      }
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        return trimmed.length > 0 ? trimmed : null;
+      }
+      if (typeof item === 'number' && Number.isFinite(item)) {
+        return item;
+      }
+      return null;
+    })
+    .filter((item) => item !== null);
+}
+
+function createEmptyProfile(address) {
+  const now = new Date().toISOString();
+  return {
+    resolvedAddress: address,
+    relativeId: null,
+    referrerId: null,
+    points: 0,
+    pointsRaw: 0,
+    redeemedPoints: 0,
+    completedQuests: [],
+    completedChallenges: [],
+    completableChallenges: [],
+    weeklyDrawEligibility: [],
+    weeklyDraws: {
+      eligible: false,
+      entries: 0,
+      weeks: [],
+      availablePrizeAssetIds: [],
+      claimedPrizeAssetIds: [],
+    },
+    availableDrawPrizeAssetIds: [],
+    claimedDrawPrizeAssetIds: [],
+    referrals: [],
+    referralsCount: 0,
+    hasParticipation: false,
+    status: 'no_data',
+    statusMessage: 'We couldn\'t find any Algoland activity for that wallet yet.',
+    source: LANDS_INSPECTOR_BASE,
+    updatedAt: now,
+    fetchedAt: now,
+    raw: null,
+  };
+}
+
+function buildInspectorProfile(address, payload) {
+  const now = new Date().toISOString();
+  const relativeId = toSafeInteger(payload?.relativeId);
+  const referrerId = toSafeInteger(payload?.referrerId);
+  const points = normaliseInspectorNumber(payload?.points) ?? 0;
+  const redeemedPoints = normaliseInspectorNumber(payload?.redeemedPoints) ?? 0;
+  const completedQuests = normaliseInspectorList(payload?.completedQuests);
+  const completedChallenges = normaliseInspectorList(payload?.completedChallenges);
+  const completableChallenges = normaliseInspectorList(payload?.completableChallenges);
+  const weeklyDrawEligibility = normaliseInspectorList(payload?.weeklyDrawEligibility);
+  const availablePrizes = normaliseInspectorList(payload?.availableDrawPrizeAssetIds);
+  const claimedPrizes = normaliseInspectorList(payload?.claimedDrawPrizeAssetIds);
+  const referrals = normaliseInspectorList(payload?.referrals);
+  const referralsCountCandidate = normaliseInspectorNumber(
+    payload?.referralsCount ?? payload?.referralCount,
+  );
+
+  const hasParticipation = Boolean(
+    (points ?? 0) > 0
+      || redeemedPoints > 0
+      || completedQuests.length > 0
+      || completedChallenges.length > 0
+      || referrals.length > 0
+      || weeklyDrawEligibility.length > 0
+      || availablePrizes.length > 0
+      || claimedPrizes.length > 0,
+  );
+
+  let statusMessage = null;
+  if (typeof payload?.statusMessage === 'string' && payload.statusMessage.trim().length > 0) {
+    statusMessage = payload.statusMessage.trim();
+  } else if (typeof payload?.message === 'string' && payload.message.trim().length > 0) {
+    statusMessage = payload.message.trim();
+  } else if (typeof payload?.note === 'string' && payload.note.trim().length > 0) {
+    statusMessage = payload.note.trim();
+  }
+
+  if (!hasParticipation && !statusMessage) {
+    statusMessage = 'We couldn\'t find any Algoland activity for that wallet yet.';
+  }
+
+  const weeklyDraws = {
+    eligible: weeklyDrawEligibility.length > 0,
+    entries: weeklyDrawEligibility.length,
+    weeks: weeklyDrawEligibility,
+    availablePrizeAssetIds: availablePrizes,
+    claimedPrizeAssetIds: claimedPrizes,
+  };
+
+  const profile = {
+    resolvedAddress: address,
+    relativeId: Number.isFinite(relativeId) ? relativeId : null,
+    referrerId: Number.isFinite(referrerId) ? referrerId : null,
+    points,
+    pointsRaw: points,
+    redeemedPoints,
+    completedQuests,
+    completedChallenges,
+    completableChallenges,
+    weeklyDrawEligibility,
+    weeklyDraws,
+    availableDrawPrizeAssetIds: availablePrizes,
+    claimedDrawPrizeAssetIds: claimedPrizes,
+    referrals,
+    referralsCount: Number.isFinite(referralsCountCandidate)
+      ? referralsCountCandidate
+      : referrals.length,
+    hasParticipation,
+    status: hasParticipation ? 'ok' : 'no_data',
+    statusMessage,
+    source: LANDS_INSPECTOR_BASE,
+    updatedAt:
+      typeof payload?.updatedAt === 'string' && payload.updatedAt.trim().length > 0
+        ? payload.updatedAt
+        : now,
+    fetchedAt: now,
+    raw: payload,
+  };
+
+  return profile;
+}
+
 async function getProfileForAddress(address) {
   const normalised = normaliseAddress(address);
   if (!normalised || !isAlgorandAddress(normalised)) {
@@ -1096,87 +1276,20 @@ async function getProfileForAddress(address) {
     return { ...cached };
   }
 
-  let payload;
+  let inspectorPayload;
   try {
-    payload = await indexerRequest(`/v2/accounts/${normalised}`, { 'include-all': false });
+    inspectorPayload = await fetchLandsInspectorProfile(normalised);
   } catch (error) {
-    if (isIndexerNotFoundError(error)) {
-      throw createProfileError(
-        'profile_not_found',
-        'That address has not joined the Algoland campaign yet.',
-        404,
-      );
-    }
-    throw createProfileError('profile_unavailable', 'Unable to fetch account data.', 502);
-  }
-
-  const account = payload?.account;
-  if (!account) {
-    throw createProfileError('profile_not_found', 'That address has not joined the Algoland campaign yet.', 404);
-  }
-
-  const localStates = Array.isArray(account['apps-local-state'])
-    ? account['apps-local-state']
-    : [];
-  const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
-  const keyValues = Array.isArray(appState?.['key-value']) ? appState['key-value'] : [];
-  const entries = decodeLocalStateEntries(keyValues);
-  const legacyProfile = entries.length > 0 ? buildProfileFromEntries(entries, { address: normalised }) : null;
-
-  let challengeProgress;
-  try {
-    challengeProgress = await getChallengeProgressForAddress(normalised);
-  } catch (error) {
-    console.error('[Algoland API] Failed to load challenge progress', {
+    console.error('[Algoland API] Lands Inspector lookup failed', {
       address: normalised,
       message: error.message,
     });
-    throw createProfileError('profile_unavailable', 'Unable to load Algoland progress at this time.', 502);
+    throw createProfileError('profile_unavailable', 'Unable to load Algoland profile at this time.', 502);
   }
 
-  if (!challengeProgress) {
-    throw createProfileError('profile_not_found', 'That address has not joined the Algoland campaign yet.', 404);
-  }
-
-  const challengeSummary = summariseChallengeProgress(challengeProgress.values);
-  const lastRoundTime = toSafeInteger(account['last-round-time']);
-  const updatedAt = Number.isFinite(lastRoundTime)
-    ? new Date(lastRoundTime * 1000).toISOString()
-    : new Date().toISOString();
-
-  const profile = {
-    resolvedAddress: normalised,
-    relativeId: legacyProfile?.relativeId ?? null,
-    referrerId: legacyProfile?.referrerId ?? null,
-    points: challengeSummary.totalPoints,
-    pointsRaw: challengeSummary.totalPointsRaw,
-    redeemedPoints: legacyProfile?.redeemedPoints ?? 0,
-    completedQuests: challengeSummary.completedQuests,
-    completedChallenges: challengeSummary.completedChallenges,
-    referrals: Array.isArray(legacyProfile?.referrals) ? legacyProfile.referrals : [],
-    weeklyDraws: challengeSummary.weeklyDraws,
-    challengePoints: challengeSummary.weeklyPoints,
-    challengeValues: challengeProgress.values,
-    challengeValueBytes: challengeProgress.box?.value?.bytes ?? null,
-    challengeBoxName: challengeProgress.encodedName,
-    source: INDEXER_BASE,
-    updatedAt,
-    fetchedAt: new Date().toISOString(),
-  };
-
-  if (legacyProfile?.rawState !== undefined) {
-    profile.rawState = legacyProfile.rawState;
-  }
-
-  if (typeof legacyProfile?.referralsCount === 'number' && Number.isFinite(legacyProfile.referralsCount)) {
-    profile.referralsCount = legacyProfile.referralsCount;
-  } else if (Array.isArray(profile.referrals)) {
-    profile.referralsCount = profile.referrals.length;
-  }
-
-  if (typeof profile.redeemedPoints !== 'number' || !Number.isFinite(profile.redeemedPoints)) {
-    profile.redeemedPoints = 0;
-  }
+  const profile = inspectorPayload
+    ? buildInspectorProfile(normalised, inspectorPayload)
+    : createEmptyProfile(normalised);
 
   profileCache.set(cacheKey, profile);
   if (typeof profile.relativeId === 'number' && Number.isFinite(profile.relativeId)) {
