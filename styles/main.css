@@ -1393,6 +1393,71 @@ body.about-page .hero-logo {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.algoland-page .algoland-search {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.algoland-page .algoland-search__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: clamp(14px, 3vw, 18px);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(38, 211, 197, 0.25);
+  border-radius: 14px;
+}
+
+.algoland-page .algoland-search__input {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 12px 16px;
+  font-size: 1rem;
+  color: #f0f0f0;
+  background: rgba(12, 12, 12, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.algoland-page .algoland-search__input::placeholder {
+  color: rgba(240, 240, 240, 0.55);
+}
+
+.algoland-page .algoland-search__input:focus-visible {
+  outline: none;
+  border-color: rgba(38, 211, 197, 0.65);
+  box-shadow: 0 0 0 3px rgba(38, 211, 197, 0.25);
+}
+
+.algoland-page .algoland-search__button {
+  background: transparent;
+  color: #ff2ebd;
+  cursor: pointer;
+}
+
+.algoland-page .algoland-search__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.algoland-page .algoland-search__feedback {
+  margin: 0 4px;
+  min-height: 1.1em;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.algoland-page .algoland-search__feedback.is-error {
+  color: #ff8fa3;
+}
+
+.algoland-page .algoland-search__feedback.is-success {
+  color: #53f0e3;
+}
+
 .algoland-page .algoland-calendar {
   padding-top: 0;
 }
@@ -1702,15 +1767,18 @@ body.about-page .hero-logo {
   background: rgba(0, 0, 0, 0.4);
 }
 
-body.prize-modal-open {
+body.prize-modal-open,
+body.lookup-modal-open {
   overflow: hidden;
 }
 
-.prize-modal[hidden] {
+.prize-modal[hidden],
+.lookup-modal[hidden] {
   display: none !important;
 }
 
-.prize-modal {
+.prize-modal,
+.lookup-modal {
   position: fixed;
   inset: 0;
   display: flex;
@@ -1723,14 +1791,16 @@ body.prize-modal-open {
   overflow-y: auto;
 }
 
-.prize-modal__overlay {
+.prize-modal__overlay,
+.lookup-modal__overlay {
   position: fixed;
   inset: 0;
   background: rgba(5, 9, 20, 0.85);
   z-index: 0;
 }
 
-.prize-modal__dialog {
+.prize-modal__dialog,
+.lookup-modal__dialog {
   position: relative;
   width: min(560px, 100%);
   background: rgba(14, 14, 14, 0.96);
@@ -1744,7 +1814,8 @@ body.prize-modal-open {
   z-index: 1;
 }
 
-.prize-modal__close {
+.prize-modal__close,
+.lookup-modal__close {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -1763,20 +1834,24 @@ body.prize-modal-open {
 }
 
 .prize-modal__close:hover,
-.prize-modal__close:focus-visible {
+.prize-modal__close:focus-visible,
+.lookup-modal__close:hover,
+.lookup-modal__close:focus-visible {
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   outline: none;
 }
 
-.prize-modal__content {
+.prize-modal__content,
+.lookup-modal__content {
   display: flex;
   flex-direction: column;
   gap: clamp(16px, 3vw, 24px);
   text-align: center;
 }
 
-.prize-modal__content h2 {
+.prize-modal__content h2,
+.lookup-modal__content h2 {
   margin: 0;
   font-size: clamp(1.4rem, 4vw, 1.8rem);
   letter-spacing: 0.04em;
@@ -1789,6 +1864,75 @@ body.prize-modal-open {
   flex-direction: column;
   gap: clamp(12px, 3vw, 18px);
 }
+
+.lookup-modal__content {
+  text-align: left;
+}
+
+.lookup-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 4vw, 22px);
+}
+
+.lookup-modal__section {
+  padding: clamp(16px, 3vw, 20px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 10, 18, 0.72);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.35);
+}
+
+.lookup-modal__section-title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(83, 240, 227, 0.88);
+}
+
+.lookup-modal__definition-list {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.lookup-modal__definition-list dt {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lookup-modal__definition-list dd {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.88);
+  word-break: break-word;
+}
+
+.lookup-modal__list {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.lookup-modal__text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.lookup-modal__empty {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
 
 .prize-modal__image {
   width: min(260px, 65vw);

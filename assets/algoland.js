@@ -11,6 +11,7 @@
   const DEFAULT_DISTRIBUTOR = 'HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM';
   const APP_ID = 3215540125;
   const prizeModal = createPrizeModal();
+  const lookupModal = createLookupModal(root);
 
   const weeksConfig = [
     { week: 1, assetId: '3215542831', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-22' },
@@ -61,6 +62,7 @@
   const updatedElement = root.querySelector('[data-algoland-updated]');
   const weekCards = createWeekCardMap();
   attachWeekCardInteractions();
+  setupAddressSearch();
 
   const state = {
     snapshot: loadSnapshot(),
@@ -93,6 +95,122 @@
       return trimmedPath;
     }
     return `${API_BASE}${trimmedPath}`;
+  }
+
+  function setupAddressSearch() {
+    const form = root.querySelector('[data-algoland-search-form]');
+    if (!form) {
+      return;
+    }
+    const input = form.querySelector('[data-algoland-search-input]');
+    const button = form.querySelector('[data-algoland-search-button]');
+    const feedback = root.querySelector('[data-algoland-search-feedback]');
+    if (!input) {
+      return;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const parsed = parseSearchInput(input.value || '');
+      if (parsed.error) {
+        setSearchFeedback(feedback, parsed.error, 'error');
+        window.requestAnimationFrame(() => {
+          input.focus();
+          input.select();
+        });
+        return;
+      }
+
+      setSearchFeedback(feedback, 'Searching…');
+      setSearchLoading(button, true);
+
+      const searchValue = parsed.value;
+
+      try {
+        const response = await window.fetch(
+          buildApiUrl(`/api/algoland-stats?address=${encodeURIComponent(searchValue)}`),
+          { headers: { Accept: 'application/json' } }
+        );
+
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (parseError) {
+          payload = null;
+        }
+
+        if (!response.ok || payload === null || typeof payload !== 'object') {
+          const message = payload && typeof payload.message === 'string' && payload.message.length
+            ? payload.message
+            : 'Unable to find that profile. Check the address or ID and try again.';
+          throw new Error(message);
+        }
+
+        lookupModal.open({ query: searchValue, type: parsed.type, data: payload });
+        setSearchFeedback(feedback, `Showing results for ${searchValue}.`, 'success');
+      } catch (error) {
+        const defaultMessage = 'Something went wrong fetching that profile. Please try again.';
+        const message = error && typeof error.message === 'string' && error.message.length
+          ? error.message
+          : defaultMessage;
+        console.error('[Algoland] Failed to fetch profile lookup', error);
+        setSearchFeedback(feedback, message, 'error');
+      } finally {
+        setSearchLoading(button, false);
+      }
+    });
+
+    input.addEventListener('input', () => {
+      setSearchFeedback(feedback, '');
+    });
+  }
+
+  function parseSearchInput(rawValue) {
+    const trimmed = typeof rawValue === 'string' ? rawValue.trim() : '';
+    if (trimmed.length === 0) {
+      return { error: 'Enter an Algorand address or Algoland user ID.' };
+    }
+    if (/^\d+$/.test(trimmed)) {
+      return { value: trimmed, type: 'id' };
+    }
+    const normalised = trimmed.toUpperCase();
+    const algorandPattern = /^[A-Z2-7]{58}$/;
+    if (algorandPattern.test(normalised)) {
+      return { value: normalised, type: 'address' };
+    }
+    return { error: 'Enter a 58-character Algorand address or numeric ID.' };
+  }
+
+  function setSearchFeedback(element, message, status) {
+    if (!element) {
+      return;
+    }
+    element.textContent = message || '';
+    element.classList.remove('is-error', 'is-success');
+    if (!message) {
+      return;
+    }
+    if (status === 'error') {
+      element.classList.add('is-error');
+    } else if (status === 'success') {
+      element.classList.add('is-success');
+    }
+  }
+
+  function setSearchLoading(button, isLoading) {
+    if (!button) {
+      return;
+    }
+    if (typeof button.dataset.originalLabel !== 'string') {
+      button.dataset.originalLabel = button.textContent || 'Search';
+    }
+    if (isLoading) {
+      button.disabled = true;
+      button.textContent = 'Searching…';
+    } else {
+      button.disabled = false;
+      button.textContent = button.dataset.originalLabel || 'Search';
+    }
   }
 
   function initialiseStaticTable() {
@@ -612,6 +730,411 @@
       throw new Error(`Prize request failed with status ${response.status}`);
     }
     return response.json();
+  }
+
+  function createLookupModal(host) {
+    const hostElement = host || document.body;
+    let modal = hostElement.querySelector('[data-lookup-modal]');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.className = 'lookup-modal';
+      modal.hidden = true;
+      modal.setAttribute('data-lookup-modal', '');
+
+      const overlay = document.createElement('div');
+      overlay.className = 'lookup-modal__overlay';
+      overlay.setAttribute('data-lookup-dismiss', '');
+      overlay.setAttribute('aria-hidden', 'true');
+
+      const dialog = document.createElement('div');
+      dialog.className = 'lookup-modal__dialog';
+      dialog.setAttribute('data-lookup-dialog', '');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.setAttribute('aria-labelledby', 'lookup-modal-title');
+      dialog.tabIndex = -1;
+
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'lookup-modal__close';
+      closeButton.setAttribute('data-lookup-dismiss', '');
+      closeButton.setAttribute('aria-label', 'Close search results');
+      closeButton.innerHTML = '&times;';
+
+      const content = document.createElement('div');
+      content.className = 'lookup-modal__content';
+
+      const titleElement = document.createElement('h2');
+      titleElement.id = 'lookup-modal-title';
+      titleElement.setAttribute('data-lookup-title', '');
+      titleElement.textContent = 'Algoland profile lookup';
+
+      const bodyElement = document.createElement('div');
+      bodyElement.className = 'lookup-modal__body';
+      bodyElement.setAttribute('data-lookup-body', '');
+
+      content.appendChild(titleElement);
+      content.appendChild(bodyElement);
+      dialog.appendChild(closeButton);
+      dialog.appendChild(content);
+      modal.appendChild(overlay);
+      modal.appendChild(dialog);
+      hostElement.appendChild(modal);
+    }
+
+    const dialog = modal.querySelector('[data-lookup-dialog]');
+    const titleElement = modal.querySelector('[data-lookup-title]');
+    const bodyElement = modal.querySelector('[data-lookup-body]');
+    const dismissElements = modal.querySelectorAll('[data-lookup-dismiss]');
+
+    dismissElements.forEach((element) => {
+      element.addEventListener('click', () => {
+        hide();
+      });
+    });
+
+    modal.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && modal.dataset.open === 'true') {
+        hide();
+      }
+    });
+
+    function show(details) {
+      if (!dialog || !titleElement || !bodyElement) {
+        return;
+      }
+      const descriptor = details && typeof details === 'object' ? details : {};
+      titleElement.textContent = 'Algoland profile lookup';
+      renderLookupModalBody(bodyElement, descriptor);
+      modal.hidden = false;
+      modal.dataset.open = 'true';
+      document.body.classList.add('lookup-modal-open');
+      window.requestAnimationFrame(() => {
+        try {
+          dialog.focus({ preventScroll: true });
+        } catch (error) {
+          dialog.focus();
+        }
+      });
+    }
+
+    function hide() {
+      if (modal.hidden) {
+        return;
+      }
+      modal.hidden = true;
+      modal.dataset.open = 'false';
+      document.body.classList.remove('lookup-modal-open');
+    }
+
+    return {
+      open(details) {
+        show(details);
+      },
+      close: hide,
+    };
+  }
+
+  function renderLookupModalBody(container, descriptor) {
+    if (!container) {
+      return;
+    }
+    container.textContent = '';
+    const details = descriptor && typeof descriptor === 'object' ? descriptor : {};
+    const data = details.data && typeof details.data === 'object' ? details.data : {};
+    const query = typeof details.query === 'string' ? details.query : '';
+    const lookupType = details.type === 'id' ? 'id' : 'address';
+
+    const resolvedAddress = selectFirst(
+      data.resolvedAddress,
+      data.address,
+      data.walletAddress,
+      data.wallet,
+      data.accountAddress,
+      data.account,
+      lookupType === 'address' ? query : null
+    );
+    const relativeId = selectFirst(data.relativeId, data.relativeID, data.relative_id, data.relative);
+    const referrerId = selectFirst(data.referrerId, data.referrerID, data.referrer_id, data.referrer);
+    const totalPoints = firstNumber(
+      typeof data.points === 'number' ? data.points : null,
+      data.points && firstNumber(data.points.total, data.points.current, data.points.balance, data.points.available),
+      data.totalPoints,
+      data.currentPoints,
+      data.pointsTotal,
+      data.pointsBalance
+    );
+    const redeemedPoints = firstNumber(
+      data.points && firstNumber(data.points.redeemed, data.points.redeemedPoints, data.points.claimed),
+      data.redeemedPoints,
+      data.claimedPoints
+    );
+    const completedQuests = normaliseListItems(data.completedQuests || data.quests);
+    const completedChallenges = normaliseListItems(data.completedChallenges || data.challenges);
+    const referralsList = normaliseListItems(data.referrals);
+    const referralsProvided = Array.isArray(data.referrals)
+      || typeof data.referrals === 'number'
+      || typeof data.referralsCount === 'number'
+      || typeof data.referralCount === 'number';
+    const referralsCount = firstNumber(
+      data.referralsCount,
+      data.referralCount,
+      typeof data.referrals === 'number' ? data.referrals : null,
+      referralsProvided && Array.isArray(data.referrals) ? data.referrals.length : null,
+      referralsProvided ? referralsList.length : null
+    );
+    const referralsSummary = referralsCount === null
+      ? (referralsProvided ? '0' : 'Not available')
+      : numberFormatter.format(referralsCount);
+    const weeklyDrawDetails = normaliseWeeklyDraws(data.weeklyDraws ?? data.draws);
+
+    const lookupLabel = lookupType === 'id'
+      ? (query ? `ID ${query}` : 'ID not provided')
+      : query || 'Not provided';
+
+    const summarySection = createLookupSection('Profile summary');
+    summarySection.appendChild(createDefinitionList([
+      { term: 'Lookup value', value: lookupLabel },
+      { term: 'Resolved address', value: resolvedAddress || 'Not available' },
+      { term: 'Relative ID', value: relativeId || 'Not available' },
+      { term: 'Referrer ID', value: referrerId || 'Not available' },
+      { term: 'Points', value: formatNumberValue(totalPoints) },
+      { term: 'Redeemed points', value: formatNumberValue(redeemedPoints) },
+      { term: 'Referrals', value: referralsSummary },
+    ]));
+    container.appendChild(summarySection);
+
+    container.appendChild(createListSection('Completed quests', completedQuests, 'No quests completed yet.'));
+    container.appendChild(createListSection('Completed challenges', completedChallenges, 'No challenges completed yet.'));
+    const referralsEmptyMessage = referralsProvided
+      ? 'No referrals recorded yet.'
+      : 'Referral data is not available yet.';
+    container.appendChild(createListSection('Referrals', referralsList, referralsEmptyMessage));
+
+    const weeklySection = createLookupSection('Weekly draw eligibility');
+    if (weeklyDrawDetails.text) {
+      weeklySection.appendChild(createLookupText(weeklyDrawDetails.text));
+    }
+    const weeklyList = Array.isArray(weeklyDrawDetails.list) ? weeklyDrawDetails.list : [];
+    if (weeklyList.length > 0) {
+      weeklySection.appendChild(createLookupList(weeklyList));
+    } else if (!weeklyDrawDetails.text) {
+      weeklySection.appendChild(
+        createLookupText(
+          weeklyDrawDetails.emptyMessage || 'Weekly draw eligibility data is not available yet.',
+          'lookup-modal__empty'
+        )
+      );
+    } else if (weeklyDrawDetails.emptyMessage) {
+      weeklySection.appendChild(createLookupText(weeklyDrawDetails.emptyMessage, 'lookup-modal__empty'));
+    }
+    container.appendChild(weeklySection);
+  }
+
+  function createLookupSection(title) {
+    const section = document.createElement('div');
+    section.className = 'lookup-modal__section';
+    if (title) {
+      const heading = document.createElement('h3');
+      heading.className = 'lookup-modal__section-title';
+      heading.textContent = title;
+      section.appendChild(heading);
+    }
+    return section;
+  }
+
+  function createDefinitionList(items) {
+    const list = document.createElement('dl');
+    list.className = 'lookup-modal__definition-list';
+    items.forEach((item) => {
+      if (!item || !item.term) {
+        return;
+      }
+      const dt = document.createElement('dt');
+      dt.textContent = item.term;
+      const dd = document.createElement('dd');
+      if (item.value instanceof Node) {
+        dd.appendChild(item.value);
+      } else {
+        dd.textContent = item.value != null && item.value !== '' ? String(item.value) : 'Not available';
+      }
+      list.appendChild(dt);
+      list.appendChild(dd);
+    });
+    return list;
+  }
+
+  function createListSection(title, items, emptyMessage) {
+    const section = createLookupSection(title);
+    section.appendChild(createLookupList(items, emptyMessage));
+    return section;
+  }
+
+  function createLookupList(items, emptyMessage = 'No data available.') {
+    if (!Array.isArray(items) || items.length === 0) {
+      return createLookupText(emptyMessage, 'lookup-modal__empty');
+    }
+    const list = document.createElement('ul');
+    list.className = 'lookup-modal__list';
+    items.forEach((item) => {
+      const listItem = document.createElement('li');
+      listItem.textContent = item;
+      list.appendChild(listItem);
+    });
+    return list;
+  }
+
+  function createLookupText(text, className = 'lookup-modal__text') {
+    const paragraph = document.createElement('p');
+    paragraph.className = className;
+    paragraph.textContent = text;
+    return paragraph;
+  }
+
+  function normaliseWeeklyDraws(value) {
+    if (value == null) {
+      return { text: '', list: [], emptyMessage: 'Weekly draw eligibility data is not available yet.' };
+    }
+    if (Array.isArray(value)) {
+      return {
+        text: '',
+        list: normaliseListItems(value),
+        emptyMessage: 'No weekly draw entries recorded yet.',
+      };
+    }
+    if (typeof value === 'object') {
+      const list = Array.isArray(value.weeks) ? normaliseListItems(value.weeks) : [];
+      const eligible = typeof value.eligible === 'boolean'
+        ? value.eligible
+        : typeof value.isEligible === 'boolean'
+          ? value.isEligible
+          : null;
+      const entries = firstNumber(
+        value.entries,
+        Array.isArray(value.entries) ? value.entries.length : null,
+        value.entryCount,
+        value.count
+      );
+      const summaryParts = [];
+      if (eligible !== null) {
+        summaryParts.push(eligible ? 'Eligible' : 'Not eligible');
+      }
+      if (entries !== null) {
+        summaryParts.push(`${numberFormatter.format(entries)} entr${entries === 1 ? 'y' : 'ies'}`);
+      }
+      return {
+        text: summaryParts.join(' • '),
+        list,
+        emptyMessage: list.length === 0 ? 'No weekly draw entries recorded yet.' : '',
+      };
+    }
+    if (typeof value === 'boolean') {
+      return { text: value ? 'Eligible' : 'Not eligible', list: [], emptyMessage: '' };
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return { text: numberFormatter.format(value), list: [], emptyMessage: '' };
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return { text: value, list: [], emptyMessage: '' };
+    }
+    return { text: '', list: [], emptyMessage: 'Weekly draw eligibility data is not available yet.' };
+  }
+
+  function normaliseListItems(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map((item) => normaliseListItem(item))
+      .filter((item) => typeof item === 'string' && item.trim().length > 0);
+  }
+
+  function normaliseListItem(item) {
+    if (item == null) {
+      return null;
+    }
+    if (typeof item === 'string') {
+      return item;
+    }
+    if (typeof item === 'number' && Number.isFinite(item)) {
+      return numberFormatter.format(item);
+    }
+    if (typeof item === 'object') {
+      if (typeof item.name === 'string' && item.name.trim()) {
+        return item.name;
+      }
+      if (typeof item.title === 'string' && item.title.trim()) {
+        return item.title;
+      }
+      if (typeof item.description === 'string' && item.description.trim()) {
+        return item.description;
+      }
+      if (typeof item.value === 'string' && item.value.trim()) {
+        return item.value;
+      }
+      if (typeof item.id === 'string' || typeof item.id === 'number') {
+        return `ID ${item.id}`;
+      }
+      const week = selectFirst(item.week, item.weekNumber, item.id);
+      const eligible = typeof item.eligible === 'boolean'
+        ? item.eligible
+        : typeof item.isEligible === 'boolean'
+          ? item.isEligible
+          : null;
+      const entries = firstNumber(
+        item.entries,
+        Array.isArray(item.entries) ? item.entries.length : null,
+        item.entryCount,
+        item.count
+      );
+      const parts = [];
+      if (week !== null && week !== undefined && week !== '') {
+        parts.push(`Week ${week}`);
+      }
+      if (eligible !== null) {
+        parts.push(eligible ? 'Eligible' : 'Not eligible');
+      }
+      if (entries !== null) {
+        parts.push(`${numberFormatter.format(entries)} entr${entries === 1 ? 'y' : 'ies'}`);
+      }
+      if (parts.length > 0) {
+        return parts.join(' • ');
+      }
+    }
+    try {
+      return JSON.stringify(item);
+    } catch (error) {
+      return String(item);
+    }
+  }
+
+  function firstNumber(...candidates) {
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  function selectFirst(...candidates) {
+    for (const candidate of candidates) {
+      if (candidate === null || candidate === undefined) {
+        continue;
+      }
+      if (typeof candidate === 'string' && candidate.trim().length === 0) {
+        continue;
+      }
+      return candidate;
+    }
+    return null;
+  }
+
+  function formatNumberValue(value, fallback = 'Not available') {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return numberFormatter.format(value);
+    }
+    return fallback;
   }
 
   function createPrizeModal() {

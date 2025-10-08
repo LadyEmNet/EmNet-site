@@ -18,6 +18,86 @@ const CACHE_TTL_SECONDS = Number.parseInt(process.env.CACHE_TTL_SECONDS || '', 1
 const MAX_RETRIES = Number.parseInt(process.env.INDEXER_MAX_RETRIES || '', 10) || 5;
 const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS || '', 10) || 500;
 
+const ALGOLAND_ADDRESS_PATTERN = /^[A-Z2-7]{58}$/;
+
+const RELATIVE_ID_KEYS = [
+  'relativeid',
+  'relative_id',
+  'relative',
+  'relid',
+  'userindex',
+  'user_id',
+  'userid',
+];
+const REFERRER_ID_KEYS = [
+  'referrerid',
+  'referrer_id',
+  'referrer',
+  'parentid',
+  'parent_id',
+];
+const POINT_KEYS = [
+  'points',
+  'totalpoints',
+  'points_total',
+  'pointsbalance',
+  'pointbalance',
+  'currentpoints',
+  'availablepoints',
+  'balance',
+];
+const REDEEMED_POINT_KEYS = [
+  'redeemedpoints',
+  'pointsredeemed',
+  'redeemed',
+  'redeemed_points',
+  'pointsclaimed',
+  'claimedpoints',
+];
+const QUEST_LIST_KEYS = [
+  'completedquests',
+  'questscompleted',
+  'quests_complete',
+  'quests',
+  'questhistory',
+  'quest_history',
+  'questscompletedlist',
+  'quest_completed',
+  'questcomplete',
+];
+const CHALLENGE_LIST_KEYS = [
+  'completedchallenges',
+  'challengescompleted',
+  'challenges',
+  'challengehistory',
+  'challenge_history',
+  'challenges_complete',
+];
+const REFERRAL_LIST_KEYS = [
+  'referrals',
+  'referrallist',
+  'referralslist',
+  'referralhistory',
+  'refs',
+];
+const REFERRAL_COUNT_KEYS = [
+  'referralcount',
+  'referralscount',
+  'referrals_total',
+  'referralsnumber',
+  'refcount',
+];
+const WEEKLY_DRAW_KEYS = [
+  'weeklydraws',
+  'weekly_draws',
+  'weeklyentries',
+  'drawentries',
+  'weeklydrawentries',
+  'draws',
+  'weekly',
+  'draw_history',
+];
+
 const allowedOrigins = RAW_ALLOWED_ORIGINS.split(',')
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
@@ -52,6 +132,18 @@ app.use(limiter);
 const responseCache = new NodeCache({
   stdTTL: CACHE_TTL_SECONDS,
   checkperiod: Math.max(Math.floor(CACHE_TTL_SECONDS / 2), 30),
+  useClones: false,
+});
+
+const profileCache = new NodeCache({
+  stdTTL: CACHE_TTL_SECONDS,
+  checkperiod: Math.max(Math.floor(CACHE_TTL_SECONDS / 2), 30),
+  useClones: false,
+});
+
+const idLookupCache = new NodeCache({
+  stdTTL: 12 * 60 * 60,
+  checkperiod: 60 * 60,
   useClones: false,
 });
 
@@ -207,6 +299,328 @@ function extractUintValue(stateValue) {
     }
   }
   return undefined;
+}
+
+function createProfileError(code, message, status = 400) {
+  const error = new Error(message);
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
+function parseProfileIdentifier(raw) {
+  if (typeof raw !== 'string' || raw.trim().length === 0) {
+    throw createProfileError('missing_identifier', 'address query parameter is required.', 400);
+  }
+  const trimmed = raw.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const numeric = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(numeric) || numeric < 0) {
+      throw createProfileError('invalid_identifier', 'Algoland ID must be a positive integer.', 400);
+    }
+    return { type: 'id', value: numeric, raw: trimmed };
+  }
+  const upper = trimmed.toUpperCase();
+  if (isAlgorandAddress(upper)) {
+    return { type: 'address', value: upper, raw: upper };
+  }
+  throw createProfileError(
+    'invalid_identifier',
+    'address must be a numeric ID or 58-character Algorand address.',
+    400,
+  );
+}
+
+function isAlgorandAddress(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed.length !== 58) {
+    return false;
+  }
+  return ALGOLAND_ADDRESS_PATTERN.test(trimmed);
+}
+
+function parseStateValue(stateValue) {
+  const numeric = extractUintValue(stateValue);
+  if (numeric !== undefined) {
+    return numeric;
+  }
+  if (!stateValue || typeof stateValue !== 'object') {
+    return null;
+  }
+  const { bytes } = stateValue;
+  if (typeof bytes !== 'string') {
+    return null;
+  }
+  if (bytes.length === 0) {
+    return '';
+  }
+  try {
+    const buffer = Buffer.from(bytes, 'base64');
+    if (buffer.length === 0) {
+      return '';
+    }
+    const utf8 = buffer.toString('utf8');
+    const cleaned = utf8.replace(/\u0000+$/g, '');
+    const trimmed = cleaned.trim();
+    if (!trimmed) {
+      return '';
+    }
+    const jsonValue = tryParseJson(trimmed);
+    if (jsonValue !== undefined) {
+      return jsonValue;
+    }
+    if (/[\n,|]/.test(trimmed)) {
+      const parts = trimmed
+        .split(/[\n,|]+/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length > 1) {
+        return parts;
+      }
+    }
+    return trimmed;
+  } catch (error) {
+    console.warn('[Algoland API] Failed to decode local state bytes', {
+      message: error.message,
+    });
+    return null;
+  }
+}
+
+function tryParseJson(text) {
+  if (typeof text !== 'string' || text.length === 0) {
+    return undefined;
+  }
+  const firstChar = text.charAt(0);
+  if (firstChar !== '{' && firstChar !== '[') {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function decodeLocalStateEntries(keyValues) {
+  if (!Array.isArray(keyValues)) {
+    return [];
+  }
+  const entries = [];
+  keyValues.forEach((entry) => {
+    const keyName = decodeStateKey(entry?.key);
+    if (!keyName) {
+      return;
+    }
+    const value = parseStateValue(entry?.value);
+    entries.push({
+      key: keyName,
+      lowerKey: keyName.toLowerCase(),
+      value,
+    });
+  });
+  return entries;
+}
+
+function normaliseKeyName(key) {
+  if (typeof key === 'string') {
+    return key.toLowerCase();
+  }
+  return String(key || '').toLowerCase();
+}
+
+function extractFirstValue(entries, keys) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return undefined;
+  }
+  const searchKeys = Array.isArray(keys) ? keys : [keys];
+  for (const key of searchKeys) {
+    const lowerKey = normaliseKeyName(key);
+    const match = entries.find((entry) => entry.lowerKey === lowerKey);
+    if (match) {
+      return match.value;
+    }
+  }
+  return undefined;
+}
+
+function coerceNumericValue(candidate, depth = 0) {
+  if (candidate === null || candidate === undefined) {
+    return undefined;
+  }
+  const direct = toSafeInteger(candidate);
+  if (direct !== undefined) {
+    return direct;
+  }
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (trimmed.length > 0) {
+      const parsed = Number.parseInt(trimmed, 10);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  if (typeof candidate === 'object' && depth < 3) {
+    const keysToCheck = [
+      'value',
+      'count',
+      'total',
+      'balance',
+      'current',
+      'available',
+      'entries',
+      'amount',
+      'totalPoints',
+      'points',
+    ];
+    for (const key of keysToCheck) {
+      if (key in candidate) {
+        const nested = coerceNumericValue(candidate[key], depth + 1);
+        if (nested !== undefined) {
+          return nested;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+function coerceListValue(candidate, depth = 0) {
+  if (candidate === null || candidate === undefined) {
+    return [];
+  }
+  if (Array.isArray(candidate)) {
+    return candidate.slice();
+  }
+  if (typeof candidate === 'string') {
+    const trimmed = candidate.trim();
+    if (!trimmed) {
+      return [];
+    }
+    if (/[\n,|]/.test(trimmed)) {
+      return trimmed
+        .split(/[\n,|]+/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+    }
+    return [trimmed];
+  }
+  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+    return candidate === 0 ? [] : [candidate];
+  }
+  if (typeof candidate === 'object' && depth < 3) {
+    const arrayLikeKeys = ['list', 'items', 'entries', 'weeks', 'values', 'ids', 'history'];
+    for (const key of arrayLikeKeys) {
+      if (Array.isArray(candidate[key])) {
+        return candidate[key].slice();
+      }
+    }
+    if (typeof candidate.text === 'string' && candidate.text.trim()) {
+      return [candidate.text.trim()];
+    }
+    const flatEntries = Object.entries(candidate).filter(([, value]) =>
+      value !== null && value !== undefined && typeof value !== 'object',
+    );
+    if (flatEntries.length > 0) {
+      return flatEntries.map(([key, value]) => `${key}: ${value}`);
+    }
+  }
+  return [];
+}
+
+function normaliseWeeklyDrawState(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return value.slice();
+  }
+  if (typeof value === 'object') {
+    const result = {};
+    const eligible =
+      typeof value.eligible === 'boolean'
+        ? value.eligible
+        : typeof value.isEligible === 'boolean'
+          ? value.isEligible
+          : undefined;
+    if (eligible !== undefined) {
+      result.eligible = eligible;
+    }
+    const entriesCount = coerceNumericValue(
+      value.entries ?? value.count ?? value.totalEntries ?? value.total,
+    );
+    if (entriesCount !== undefined) {
+      result.entries = entriesCount;
+    }
+    const weeksList = coerceListValue(
+      value.weeks ?? value.list ?? value.entries ?? value.weekNumbers ?? value.values ?? value.history,
+    );
+    if (weeksList.length > 0) {
+      result.weeks = weeksList;
+    }
+    if (typeof value.summary === 'string' && value.summary.trim()) {
+      result.summary = value.summary.trim();
+    }
+    if (typeof value.status === 'string' && value.status.trim()) {
+      result.status = value.status.trim();
+    }
+    if (Object.keys(result).length === 0) {
+      const derived = coerceListValue(value);
+      if (derived.length > 0) {
+        return derived;
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  }
+  if (typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+}
+
+function buildProfileFromEntries(entries, context = {}) {
+  const address = context.address ? normaliseAddress(context.address) : undefined;
+  const rawState = {};
+  entries.forEach((entry) => {
+    rawState[entry.key] = entry.value;
+  });
+
+  const relativeId = coerceNumericValue(extractFirstValue(entries, RELATIVE_ID_KEYS));
+  const referrerId = coerceNumericValue(extractFirstValue(entries, REFERRER_ID_KEYS));
+  const pointsValue = extractFirstValue(entries, POINT_KEYS);
+  const redeemedValue = extractFirstValue(entries, REDEEMED_POINT_KEYS);
+  const referralsValue = extractFirstValue(entries, REFERRAL_LIST_KEYS);
+  const profile = {
+    resolvedAddress: address || null,
+    relativeId: relativeId ?? null,
+    referrerId: referrerId ?? null,
+    points: coerceNumericValue(pointsValue) ?? null,
+    redeemedPoints: coerceNumericValue(redeemedValue) ?? null,
+    completedQuests: coerceListValue(extractFirstValue(entries, QUEST_LIST_KEYS)),
+    completedChallenges: coerceListValue(extractFirstValue(entries, CHALLENGE_LIST_KEYS)),
+    referrals: coerceListValue(referralsValue),
+    weeklyDraws: normaliseWeeklyDrawState(extractFirstValue(entries, WEEKLY_DRAW_KEYS)),
+    rawState,
+    source: INDEXER_BASE,
+  };
+
+  const referralsCountValue = extractFirstValue(entries, REFERRAL_COUNT_KEYS);
+  const referralsCount = coerceNumericValue(referralsCountValue);
+  if (referralsCount !== undefined) {
+    profile.referralsCount = referralsCount;
+  } else if (profile.referrals.length > 0) {
+    profile.referralsCount = profile.referrals.length;
+  }
+
+  return profile;
 }
 
 async function getUserCounterFromApplication() {
@@ -386,6 +800,164 @@ function normaliseAddress(value) {
   return undefined;
 }
 
+function isIndexerNotFoundError(error) {
+  if (!error || typeof error.message !== 'string') {
+    return false;
+  }
+  return error.message.includes('(404)');
+}
+
+async function resolveRelativeId(relativeId) {
+  if (!Number.isFinite(relativeId) || relativeId < 0) {
+    return undefined;
+  }
+  const cacheKey = `relative:${relativeId}`;
+  const cached = idLookupCache.get(cacheKey);
+  if (typeof cached === 'string' && cached) {
+    return cached;
+  }
+  if (cached === null) {
+    return undefined;
+  }
+
+  let nextToken;
+  const baseParams = {
+    limit: 100,
+    'include-all': false,
+  };
+
+  try {
+    do {
+      const params = { ...baseParams };
+      if (nextToken) {
+        params.next = nextToken;
+      }
+      const page = await indexerRequest(`/v2/applications/${APP_ID}/accounts`, params);
+      const accounts = Array.isArray(page.accounts) ? page.accounts : [];
+      for (const account of accounts) {
+        const address = normaliseAddress(account.address);
+        if (!address) {
+          continue;
+        }
+        const localStates = Array.isArray(account['apps-local-state'])
+          ? account['apps-local-state']
+          : [];
+        const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
+        if (!appState || !Array.isArray(appState['key-value'])) {
+          continue;
+        }
+        const entries = decodeLocalStateEntries(appState['key-value']);
+        if (entries.length === 0) {
+          continue;
+        }
+        const value = coerceNumericValue(extractFirstValue(entries, RELATIVE_ID_KEYS));
+        if (value !== undefined) {
+          idLookupCache.set(`relative:${value}`, address);
+          if (value === relativeId) {
+            return address;
+          }
+        }
+      }
+      nextToken = page['next-token'] || null;
+    } while (nextToken);
+  } catch (error) {
+    console.warn('[Algoland API] Failed to resolve relative ID', {
+      relativeId,
+      message: error.message,
+    });
+    throw error;
+  }
+
+  idLookupCache.set(cacheKey, null, 60);
+  return undefined;
+}
+
+async function getProfileForAddress(address) {
+  const normalised = normaliseAddress(address);
+  if (!normalised || !isAlgorandAddress(normalised)) {
+    throw createProfileError('invalid_address', 'Algorand address is invalid.', 400);
+  }
+  const cacheKey = `profile:${normalised}`;
+  const cached = profileCache.get(cacheKey);
+  if (cached) {
+    return { ...cached };
+  }
+
+  let payload;
+  try {
+    payload = await indexerRequest(`/v2/accounts/${normalised}`, { 'include-all': false });
+  } catch (error) {
+    if (isIndexerNotFoundError(error)) {
+      throw createProfileError(
+        'profile_not_found',
+        'That address has not opted into Algoland yet.',
+        404,
+      );
+    }
+    throw createProfileError('profile_unavailable', 'Unable to fetch account data.', 502);
+  }
+
+  const account = payload?.account;
+  if (!account) {
+    throw createProfileError('profile_not_found', 'That address has not opted into Algoland yet.', 404);
+  }
+  const localStates = Array.isArray(account['apps-local-state'])
+    ? account['apps-local-state']
+    : [];
+  const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
+  if (!appState || !Array.isArray(appState['key-value'])) {
+    throw createProfileError('profile_not_found', 'That address has not opted into Algoland yet.', 404);
+  }
+  const entries = decodeLocalStateEntries(appState['key-value']);
+  if (entries.length === 0) {
+    throw createProfileError(
+      'profile_not_ready',
+      'Algoland stats are not available for that address yet.',
+      404,
+    );
+  }
+
+  const baseProfile = buildProfileFromEntries(entries, { address: normalised });
+  const lastRoundTime = toSafeInteger(account['last-round-time']);
+  const updatedAt = Number.isFinite(lastRoundTime)
+    ? new Date(lastRoundTime * 1000).toISOString()
+    : new Date().toISOString();
+
+  const profile = {
+    ...baseProfile,
+    updatedAt,
+    fetchedAt: new Date().toISOString(),
+  };
+
+  profileCache.set(cacheKey, profile);
+  if (typeof profile.relativeId === 'number' && Number.isFinite(profile.relativeId)) {
+    idLookupCache.set(`relative:${profile.relativeId}`, normalised);
+  }
+
+  return { ...profile };
+}
+
+async function getProfileForIdentifier(descriptor) {
+  if (!descriptor || typeof descriptor !== 'object') {
+    throw createProfileError('invalid_identifier', 'address query parameter is required.', 400);
+  }
+  if (descriptor.type === 'address') {
+    return getProfileForAddress(descriptor.value);
+  }
+  if (descriptor.type === 'id') {
+    const address = await resolveRelativeId(descriptor.value);
+    if (!address) {
+      throw createProfileError(
+        'profile_not_found',
+        'No Algoland profile was found for that ID.',
+        404,
+      );
+    }
+    return getProfileForAddress(address);
+  }
+  throw createProfileError('invalid_identifier', 'Unsupported identifier type.', 400);
+}
+
 async function getCompletionsForAsset(assetId) {
   const cacheKey = `completions:${assetId}`;
   const cached = responseCache.get(cacheKey);
@@ -551,6 +1123,43 @@ app.get('/api/entrants', async (req, res) => {
     res.json(responseBody);
   } catch (error) {
     sendCachedOrError(res, error);
+  }
+});
+
+app.get('/api/algoland-stats', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  let descriptor;
+  try {
+    descriptor = parseProfileIdentifier(req.query.address);
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 400;
+    res.status(status).json({ error: error?.code || 'invalid_identifier', message: error?.message || 'address query parameter is required.' });
+    return;
+  }
+
+  try {
+    const profile = await getProfileForIdentifier(descriptor);
+    const responseBody = { ...profile };
+    responseBody.lookupType = descriptor.type;
+    responseBody.lookupValue = descriptor.raw ?? descriptor.value;
+    res.json(responseBody);
+  } catch (error) {
+    if (error && error.code) {
+      const status = Number.isInteger(error.status)
+        ? error.status
+        : error.code === 'profile_unavailable'
+          ? 502
+          : error.code === 'profile_not_found'
+            ? 404
+            : 400;
+      res.status(status).json({ error: error.code, message: error.message });
+      return;
+    }
+    console.error('[Algoland API] Profile lookup failed', { message: error?.message });
+    res.status(500).json({
+      error: 'profile_error',
+      message: 'Unable to fetch Algoland profile at this time. Please try again shortly.',
+    });
   }
 });
 
