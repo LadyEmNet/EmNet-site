@@ -1,3 +1,4 @@
+import algosdk from 'algosdk';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -18,8 +19,6 @@ const LANDS_INSPECTOR_BASE = (process.env.LANDS_INSPECTOR_BASE || 'https://lands
 const CACHE_TTL_SECONDS = Number.parseInt(process.env.CACHE_TTL_SECONDS || '', 10) || 300;
 const MAX_RETRIES = Number.parseInt(process.env.INDEXER_MAX_RETRIES || '', 10) || 5;
 const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS || '', 10) || 500;
-
-const ALGOLAND_ADDRESS_PATTERN = /^[A-Z2-7]{58}$/;
 
 const RELATIVE_ID_KEYS = [
   'relativeid',
@@ -391,11 +390,18 @@ function isAlgorandAddress(value) {
   if (typeof value !== 'string') {
     return false;
   }
-  const trimmed = value.trim().toUpperCase();
+  const trimmed = value.trim();
   if (trimmed.length !== 58) {
     return false;
   }
-  return ALGOLAND_ADDRESS_PATTERN.test(trimmed);
+  try {
+    return algosdk.isValidAddress(trimmed);
+  } catch (error) {
+    console.warn('[Algoland API] Address validation failed', {
+      message: error.message,
+    });
+    return false;
+  }
 }
 
 function parseStateValue(stateValue) {
