@@ -8,8 +8,8 @@ This release introduces an on-page Algorand address and Algoland ID lookup workf
 - Provides accessible status messaging, focus management, and loading indicators to keep the experience usable with keyboards and assistive technologies.
 
 ## Back-end
-- Exposes a `/api/algoland-stats` endpoint that accepts addresses or IDs, normalises indexer responses, and caches decoded profiles to avoid redundant blockchain calls.
-- Includes resilient retry logic with exponential back-off for indexer requests and structured error responses for empty, invalid, or missing profiles.
+- Exposes a `/api/algoland-stats` endpoint that accepts addresses or IDs, forwards wallet lookups to the Lands Inspector API, and caches the decoded response so repeat queries avoid redundant upstream calls.
+- Treats missing Lands Inspector records as empty-but-successful responses so the UI can show a friendly “no activity yet” message instead of an error.
 - Shares caching utilities with existing entrants/completions endpoints so the new lookup can leverage warm data where available.
 
 ## Screenshot
