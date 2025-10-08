@@ -98,6 +98,11 @@ const WEEKLY_DRAW_KEYS = [
   'draw_history',
 ];
 
+const CHALLENGES_PER_WEEK = 3;
+const TOTAL_WEEKS = 13;
+const TOTAL_CHALLENGES = CHALLENGES_PER_WEEK * TOTAL_WEEKS;
+const CHALLENGE_BOX_PREFIX = 'addr:';
+
 const allowedOrigins = RAW_ALLOWED_ORIGINS.split(',')
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
@@ -388,6 +393,116 @@ function parseStateValue(stateValue) {
     });
     return null;
   }
+}
+
+function buildChallengeBoxName(address) {
+  if (!address || typeof address !== 'string') {
+    return undefined;
+  }
+  try {
+    return Buffer.from(`${CHALLENGE_BOX_PREFIX}${address}`, 'utf8').toString('base64');
+  } catch (error) {
+    console.warn('[Algoland API] Failed to encode challenge box name', {
+      message: error.message,
+    });
+    return undefined;
+  }
+}
+
+function decodeChallengeBoxValue(boxValue) {
+  const empty = {
+    buffer: Buffer.alloc(0),
+    values: Array.from({ length: TOTAL_CHALLENGES }, () => 0),
+  };
+  if (!boxValue || typeof boxValue !== 'object') {
+    return empty;
+  }
+  const { bytes } = boxValue;
+  if (typeof bytes !== 'string' || bytes.length === 0) {
+    return empty;
+  }
+  try {
+    const buffer = Buffer.from(bytes, 'base64');
+    return {
+      buffer,
+      values: decodeChallengeBuffer(buffer),
+    };
+  } catch (error) {
+    console.warn('[Algoland API] Failed to decode challenge box payload', {
+      message: error.message,
+    });
+    return empty;
+  }
+}
+
+function decodeChallengeBuffer(buffer) {
+  const values = Array.from({ length: TOTAL_CHALLENGES }, () => 0);
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    return values;
+  }
+  for (let index = 0; index < TOTAL_CHALLENGES; index += 1) {
+    const offset = index * 2;
+    if (offset + 2 <= buffer.length) {
+      values[index] = buffer.readUInt16LE(offset);
+    } else if (offset < buffer.length) {
+      values[index] = buffer.readUInt8(offset);
+    }
+  }
+  return values;
+}
+
+function summariseChallengeProgress(values) {
+  const completedChallenges = [];
+  const completedQuests = [];
+  const weeklyDraws = [];
+  const weeklyPoints = [];
+  let totalPointsRaw = 0;
+
+  for (let weekIndex = 0; weekIndex < TOTAL_WEEKS; weekIndex += 1) {
+    const weekLabel = `Week ${weekIndex + 1}`;
+    const challengePoints = [];
+    let allCompleted = true;
+
+    for (let challengeIndex = 0; challengeIndex < CHALLENGES_PER_WEEK; challengeIndex += 1) {
+      const valueIndex = weekIndex * CHALLENGES_PER_WEEK + challengeIndex;
+      const rawValue = Number(values?.[valueIndex] ?? 0);
+      const safeValue = Number.isFinite(rawValue) && rawValue > 0 ? Math.trunc(rawValue) : 0;
+      totalPointsRaw += safeValue;
+      challengePoints.push(safeValue);
+
+      if (safeValue > 0) {
+        const formattedPoints = (safeValue / 100).toLocaleString('en-GB', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+        completedChallenges.push(
+          `${weekLabel} – Challenge ${challengeIndex + 1} (${formattedPoints} pts)`,
+        );
+      } else {
+        allCompleted = false;
+      }
+    }
+
+    weeklyPoints.push({
+      week: weekIndex + 1,
+      challenges: challengePoints,
+    });
+
+    if (allCompleted) {
+      completedQuests.push(weekLabel);
+      weeklyDraws.push({ week: weekIndex + 1, eligible: true });
+    }
+  }
+
+  return {
+    rawValues: Array.isArray(values) ? values.slice(0, TOTAL_CHALLENGES) : [],
+    totalPointsRaw,
+    totalPoints: totalPointsRaw / 100,
+    completedChallenges,
+    completedQuests,
+    weeklyDraws,
+    weeklyPoints,
+  };
 }
 
 function tryParseJson(text) {
@@ -703,6 +818,34 @@ async function getUserCounterFromApplication() {
   throw new Error('userCounter not found in global state');
 }
 
+async function getChallengeProgressForAddress(address) {
+  const normalised = normaliseAddress(address);
+  if (!normalised) {
+    return null;
+  }
+  const encodedName = buildChallengeBoxName(normalised);
+  if (!encodedName) {
+    return null;
+  }
+
+  try {
+    const box = await indexerRequest(`/v2/applications/${APP_ID}/box`, {
+      name: `base64:${encodedName}`,
+    });
+    const decoded = decodeChallengeBoxValue(box?.value);
+    return {
+      ...decoded,
+      encodedName,
+      box,
+    };
+  } catch (error) {
+    if (isIndexerNotFoundError(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function tryGetEntrantsFromGlobalCounter(cacheKey, cached) {
   const start = performance.now();
   try {
@@ -950,7 +1093,7 @@ async function getProfileForAddress(address) {
     if (isIndexerNotFoundError(error)) {
       throw createProfileError(
         'profile_not_found',
-        'That address has not opted into Algoland yet.',
+        'That address has not joined the Algoland campaign yet.',
         404,
       );
     }
@@ -959,29 +1102,71 @@ async function getProfileForAddress(address) {
 
   const account = payload?.account;
   if (!account) {
-    throw createProfileError('profile_not_found', 'That address has not opted into Algoland yet.', 404);
+    throw createProfileError('profile_not_found', 'That address has not joined the Algoland campaign yet.', 404);
   }
+
   const localStates = Array.isArray(account['apps-local-state'])
     ? account['apps-local-state']
     : [];
   const appState = localStates.find((state) => Number(state.id) === Number(APP_ID));
-  if (!appState) {
-    throw createProfileError('profile_not_found', 'That address has not opted into Algoland yet.', 404);
-  }
-  const keyValues = Array.isArray(appState['key-value']) ? appState['key-value'] : [];
+  const keyValues = Array.isArray(appState?.['key-value']) ? appState['key-value'] : [];
   const entries = decodeLocalStateEntries(keyValues);
+  const legacyProfile = entries.length > 0 ? buildProfileFromEntries(entries, { address: normalised }) : null;
 
-  const baseProfile = buildProfileFromEntries(entries, { address: normalised });
+  let challengeProgress;
+  try {
+    challengeProgress = await getChallengeProgressForAddress(normalised);
+  } catch (error) {
+    console.error('[Algoland API] Failed to load challenge progress', {
+      address: normalised,
+      message: error.message,
+    });
+    throw createProfileError('profile_unavailable', 'Unable to load Algoland progress at this time.', 502);
+  }
+
+  if (!challengeProgress) {
+    throw createProfileError('profile_not_found', 'That address has not joined the Algoland campaign yet.', 404);
+  }
+
+  const challengeSummary = summariseChallengeProgress(challengeProgress.values);
   const lastRoundTime = toSafeInteger(account['last-round-time']);
   const updatedAt = Number.isFinite(lastRoundTime)
     ? new Date(lastRoundTime * 1000).toISOString()
     : new Date().toISOString();
 
   const profile = {
-    ...baseProfile,
+    resolvedAddress: normalised,
+    relativeId: legacyProfile?.relativeId ?? null,
+    referrerId: legacyProfile?.referrerId ?? null,
+    points: challengeSummary.totalPoints,
+    pointsRaw: challengeSummary.totalPointsRaw,
+    redeemedPoints: legacyProfile?.redeemedPoints ?? 0,
+    completedQuests: challengeSummary.completedQuests,
+    completedChallenges: challengeSummary.completedChallenges,
+    referrals: Array.isArray(legacyProfile?.referrals) ? legacyProfile.referrals : [],
+    weeklyDraws: challengeSummary.weeklyDraws,
+    challengePoints: challengeSummary.weeklyPoints,
+    challengeValues: challengeProgress.values,
+    challengeValueBytes: challengeProgress.box?.value?.bytes ?? null,
+    challengeBoxName: challengeProgress.encodedName,
+    source: INDEXER_BASE,
     updatedAt,
     fetchedAt: new Date().toISOString(),
   };
+
+  if (legacyProfile?.rawState !== undefined) {
+    profile.rawState = legacyProfile.rawState;
+  }
+
+  if (typeof legacyProfile?.referralsCount === 'number' && Number.isFinite(legacyProfile.referralsCount)) {
+    profile.referralsCount = legacyProfile.referralsCount;
+  } else if (Array.isArray(profile.referrals)) {
+    profile.referralsCount = profile.referrals.length;
+  }
+
+  if (typeof profile.redeemedPoints !== 'number' || !Number.isFinite(profile.redeemedPoints)) {
+    profile.redeemedPoints = 0;
+  }
 
   profileCache.set(cacheKey, profile);
   if (typeof profile.relativeId === 'number' && Number.isFinite(profile.relativeId)) {
