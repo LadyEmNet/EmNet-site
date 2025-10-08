@@ -181,12 +181,22 @@ async function delay(ms) {
 
 async function indexerRequest(path, params = {}) {
   const url = new URL(normalisePath(path), `${INDEXER_BASE}`);
+  const queryParts = [];
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') {
       return;
     }
-    url.searchParams.set(key, value);
+    const encodedKey = encodeURIComponent(key);
+    const stringValue = Array.isArray(value) ? value.join(',') : `${value}`;
+    let encodedValue = encodeURIComponent(stringValue);
+    if (key === 'name' && stringValue.startsWith('base64:')) {
+      encodedValue = encodedValue.replace(/^base64%3A/, 'base64:');
+    }
+    queryParts.push(`${encodedKey}=${encodedValue}`);
   });
+  if (queryParts.length > 0) {
+    url.search = `?${queryParts.join('&')}`;
+  }
 
   let attempt = 0;
   let delayMs = RETRY_BASE_DELAY_MS;
