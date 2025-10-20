@@ -7,7 +7,7 @@ export const WEEK_CONFIG = [
   { week: 2, assetId: 3215542840 },
   { week: 3, assetId: null },
   { week: 4, assetId: 3257999517 },
-  { week: 5, assetId: null },
+  { week: 5, assetId: 3257999522 },
   { week: 6, assetId: null },
   { week: 7, assetId: null },
   { week: 8, assetId: null },
@@ -27,6 +27,7 @@ export const DISTRIBUTOR_ALLOWLIST = {
     3215542836: [DEFAULT_DISTRIBUTOR],
     3215542840: [DEFAULT_DISTRIBUTOR],
     3257999517: [DEFAULT_DISTRIBUTOR],
+    3257999522: [DEFAULT_DISTRIBUTOR],
   },
 };
 
