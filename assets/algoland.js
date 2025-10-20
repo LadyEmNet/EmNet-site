@@ -19,7 +19,7 @@
     { week: 2, assetId: '3215542840', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-09-29' },
     { week: 3, assetId: '3215542836', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
     { week: 4, assetId: '3257999517', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-13' },
-    { week: 5, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
+    { week: 5, assetId: '3257999522', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
     { week: 6, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
     { week: 7, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-03' },
     { week: 8, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-10' },
@@ -519,7 +519,7 @@
         if (isCatchUp) {
           card.statusElement.textContent = 'Catch up';
         } else if (isOpen) {
-          card.statusElement.textContent = weekSnapshot.status === 'coming-soon' ? 'Open this week' : 'Open now';
+          card.statusElement.textContent = 'Open now';
         } else if (weekSnapshot.assetId && opensOn) {
           card.statusElement.textContent = 'Ready for Coming Monday';
         } else if (opensOn) {
