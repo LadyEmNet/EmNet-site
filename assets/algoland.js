@@ -11,6 +11,7 @@
   const DEFAULT_DISTRIBUTOR = 'HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM';
   const APP_ID = 3215540125;
   const ALGOLAND_ADDRESS_PATTERN = /^[A-Z2-7]{58}$/;
+  const prizeDetailsCache = new Map();
   const prizeModal = createPrizeModal();
   const lookupModal = createLookupModal(root);
 
@@ -1726,6 +1727,26 @@
     let lastFocusedElement = null;
     let activeRequestId = 0;
 
+    function cachePrizeDetails(week, details) {
+      if (week === null || week === undefined) {
+        return;
+      }
+      const cacheKey = String(week);
+      try {
+        prizeDetailsCache.set(cacheKey, details);
+      } catch (error) {
+        console.warn('[Algoland] Failed to cache prize details', error);
+      }
+    }
+
+    function getCachedPrizeDetails(week) {
+      if (week === null || week === undefined) {
+        return null;
+      }
+      const cacheKey = String(week);
+      return prizeDetailsCache.get(cacheKey) || null;
+    }
+
     function open(week) {
       activeRequestId += 1;
       const requestId = activeRequestId;
@@ -1751,6 +1772,7 @@
           if (activeRequestId !== requestId) {
             return;
           }
+          cachePrizeDetails(week, data);
           renderPrizeDetails(data, week);
         })
         .catch((error) => {
@@ -1758,7 +1780,13 @@
             return;
           }
           console.warn('[Algoland] Failed to load prize details', error);
-          renderError();
+          const fallback = getCachedPrizeDetails(week);
+          if (fallback) {
+            renderPrizeDetails(fallback, week);
+            renderFallbackNotice();
+          } else {
+            renderError();
+          }
         });
     }
 
@@ -2279,6 +2307,16 @@
         asa.textContent = `Prize ASA: ${data.asa}`;
         bodyElement.appendChild(asa);
       }
+    }
+
+    function renderFallbackNotice() {
+      if (!bodyElement) {
+        return;
+      }
+      const notice = document.createElement('p');
+      notice.className = 'prize-modal__message';
+      notice.textContent = 'Showing the most recently available prize details.';
+      bodyElement.insertBefore(notice, bodyElement.firstChild);
     }
 
     function renderError() {
