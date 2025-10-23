@@ -1754,6 +1754,11 @@ body.about-page .hero-logo {
   opacity: 0.82;
 }
 
+.algoland-page .week-card.has-rollover:hover,
+.algoland-page .week-card.has-rollover:focus-within {
+  cursor: grab;
+}
+
 .algoland-page .week-card:hover,
 .algoland-page .week-card:focus-within {
   transform: translateY(-4px);
