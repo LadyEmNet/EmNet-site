@@ -1447,6 +1447,16 @@ body.about-page .hero-logo {
   scroll-padding-top: calc(var(--site-header-height) + 96px);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .algoland-page a:hover {
+    cursor: grab;
+  }
+
+  .algoland-page a:active {
+    cursor: grabbing;
+  }
+}
+
 .algoland-summary,
 .algoland-calendar,
 .algoland-table-section {
