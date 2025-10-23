@@ -1787,14 +1787,395 @@
       bodyElement.appendChild(paragraph);
     }
 
+    function normaliseAssetId(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (/^\d+$/.test(trimmed)) {
+          const parsed = Number.parseInt(trimmed, 10);
+          if (Number.isFinite(parsed)) {
+            return parsed;
+          }
+        }
+      }
+      return null;
+    }
+
+    function collectPrizeAssetGroups({ winners, prizeAssets, mainAssetId }) {
+      const groups = new Map();
+
+      function ensureGroup(assetId) {
+        if (!groups.has(assetId)) {
+          groups.set(assetId, {
+            assetId,
+            winners: [],
+            asset: null,
+          });
+        }
+        return groups.get(assetId);
+      }
+
+      prizeAssets.forEach((asset) => {
+        const parsedId = normaliseAssetId(asset && asset.assetId);
+        if (parsedId === null) {
+          return;
+        }
+        const group = ensureGroup(parsedId);
+        group.asset = asset;
+      });
+
+      winners.forEach((winner) => {
+        if (!winner || typeof winner !== 'object') {
+          return;
+        }
+        const available = Array.isArray(winner.availablePrizeAssetIds)
+          ? winner.availablePrizeAssetIds
+          : [];
+        const claimed = Array.isArray(winner.claimedPrizeAssetIds)
+          ? winner.claimedPrizeAssetIds
+          : [];
+        const allAssetIds = new Set();
+        available.concat(claimed).forEach((value) => {
+          const parsedId = normaliseAssetId(value);
+          if (parsedId !== null) {
+            allAssetIds.add(parsedId);
+          }
+        });
+        if (allAssetIds.size === 0 && mainAssetId !== null) {
+          allAssetIds.add(mainAssetId);
+        }
+        allAssetIds.forEach((assetId) => {
+          const group = ensureGroup(assetId);
+          group.winners.push(winner);
+        });
+      });
+
+      if (mainAssetId !== null && !groups.has(mainAssetId)) {
+        groups.set(mainAssetId, {
+          assetId: mainAssetId,
+          winners: [],
+          asset: null,
+        });
+      }
+
+      return groups;
+    }
+
+    function createWinnerStatus(winner, assetId) {
+      const claimed = Array.isArray(winner.claimedPrizeAssetIds)
+        ? winner.claimedPrizeAssetIds.some((value) => normaliseAssetId(value) === assetId)
+        : false;
+      const available = Array.isArray(winner.availablePrizeAssetIds)
+        ? winner.availablePrizeAssetIds.some((value) => normaliseAssetId(value) === assetId)
+        : false;
+      if (claimed) {
+        return { label: 'Claimed', modifier: 'claimed' };
+      }
+      if (available) {
+        return { label: 'Awaiting claim', modifier: 'pending' };
+      }
+      return { label: 'Unassigned', modifier: 'unknown' };
+    }
+
+    function openWinnerProfile(winner) {
+      if (!winner || !Number.isFinite(winner.relativeId)) {
+        return;
+      }
+      const label = `Algoland ID ${winner.relativeId}`;
+      handleReferralTagClick({
+        lookupValue: String(winner.relativeId),
+        lookupType: 'id',
+        label,
+      });
+    }
+
+    function createWinnerListItem(winner, assetId) {
+      const item = document.createElement('li');
+      item.className = 'prize-modal__winner';
+
+      const header = document.createElement('div');
+      header.className = 'prize-modal__winner-header';
+      const idButton = document.createElement('button');
+      idButton.type = 'button';
+      idButton.className = 'prize-modal__winner-id';
+      idButton.textContent = `Algoland ID ${winner.relativeId}`;
+      idButton.addEventListener('click', () => {
+        openWinnerProfile(winner);
+      });
+      header.appendChild(idButton);
+
+      const status = createWinnerStatus(winner, assetId);
+      if (status) {
+        const statusElement = document.createElement('span');
+        statusElement.className = 'prize-modal__winner-status';
+        statusElement.textContent = status.label;
+        statusElement.classList.add(`prize-modal__winner-status--${status.modifier}`);
+        header.appendChild(statusElement);
+      }
+
+      item.appendChild(header);
+
+      const address = document.createElement('p');
+      address.className = 'prize-modal__winner-address';
+      address.textContent = winner.address || 'Address unavailable';
+      item.appendChild(address);
+
+      const detailList = document.createElement('ul');
+      detailList.className = 'prize-modal__winner-details';
+
+      if (Number.isFinite(winner.weeklyDrawEntries)) {
+        const entryItem = document.createElement('li');
+        entryItem.textContent = `Draw entries: ${winner.weeklyDrawEntries}`;
+        detailList.appendChild(entryItem);
+      }
+
+      if (Number.isFinite(winner.points)) {
+        const pointsItem = document.createElement('li');
+        pointsItem.textContent = `Points: ${winner.points}`;
+        detailList.appendChild(pointsItem);
+      }
+
+      if (Number.isFinite(winner.numReferrals)) {
+        const referralItem = document.createElement('li');
+        referralItem.textContent = `Referrals: ${winner.numReferrals}`;
+        detailList.appendChild(referralItem);
+      }
+
+      if (Array.isArray(winner.completedChallenges) && winner.completedChallenges.length > 0) {
+        const challengesItem = document.createElement('li');
+        challengesItem.textContent = `Challenges: ${winner.completedChallenges.join(', ')}`;
+        detailList.appendChild(challengesItem);
+      }
+
+      if (Array.isArray(winner.completedQuests) && winner.completedQuests.length > 0) {
+        const questsItem = document.createElement('li');
+        questsItem.textContent = `Quests: ${winner.completedQuests.join(', ')}`;
+        detailList.appendChild(questsItem);
+      }
+
+      if (detailList.children.length > 0) {
+        item.appendChild(detailList);
+      }
+
+      return item;
+    }
+
+    function createWinnerContent(group) {
+      const winners = Array.isArray(group?.winners) ? group.winners : [];
+      if (winners.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'prize-modal__empty';
+        empty.textContent = 'No VRF winners recorded yet.';
+        return empty;
+      }
+      const list = document.createElement('ul');
+      list.className = 'prize-modal__winner-list';
+      winners.forEach((winner) => {
+        list.appendChild(createWinnerListItem(winner, group.assetId));
+      });
+      return list;
+    }
+
+    function createClaimsContent(group) {
+      const asset = group?.asset;
+      if (!asset) {
+        const empty = document.createElement('p');
+        empty.className = 'prize-modal__empty';
+        empty.textContent = 'No prize claim data available yet.';
+        return empty;
+      }
+      if (asset.error) {
+        const error = document.createElement('p');
+        error.className = 'prize-modal__empty';
+        error.textContent = asset.error;
+        return error;
+      }
+      const holders = Array.isArray(asset.holders) ? asset.holders : [];
+      if (holders.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'prize-modal__empty';
+        empty.textContent = 'No wallets have claimed this prize yet.';
+        return empty;
+      }
+      const list = document.createElement('ul');
+      list.className = 'prize-modal__claim-list';
+      holders.forEach((address, index) => {
+        const amount = Array.isArray(asset.balances) && asset.balances[index]
+          ? asset.balances[index].amount
+          : null;
+        const item = document.createElement('li');
+        item.className = 'prize-modal__claim-item';
+        item.textContent = amount ? `${address} (${amount})` : address;
+        list.appendChild(item);
+      });
+
+      const container = document.createDocumentFragment();
+      container.appendChild(list);
+
+      const updatedLabel = formatPrizeTimestamp(asset.updatedAt);
+      if (updatedLabel) {
+        const meta = document.createElement('p');
+        meta.className = 'prize-modal__meta';
+        if (asset.stale) {
+          meta.textContent = `Last updated ${updatedLabel} (stale)`;
+        } else {
+          meta.textContent = `Last updated ${updatedLabel}`;
+        }
+        container.appendChild(meta);
+      }
+
+      if (asset.meta && typeof asset.meta.uniqueHolders === 'number') {
+        const countMeta = document.createElement('p');
+        countMeta.className = 'prize-modal__meta';
+        countMeta.textContent = `Claimed by ${asset.meta.uniqueHolders} wallet${asset.meta.uniqueHolders === 1 ? '' : 's'}`;
+        container.appendChild(countMeta);
+      }
+
+      return container;
+    }
+
+    function buildPrizeGroupSection(group, headingPrefix) {
+      const section = document.createElement('section');
+      section.className = 'prize-modal__group';
+      const heading = document.createElement('h3');
+      heading.className = 'prize-modal__group-heading';
+      if (group.assetId) {
+        heading.textContent = `${headingPrefix} · ASA ${group.assetId}`;
+      } else {
+        heading.textContent = headingPrefix;
+      }
+      section.appendChild(heading);
+
+      const winnersHeading = document.createElement('h4');
+      winnersHeading.className = 'prize-modal__section-title';
+      winnersHeading.textContent = 'VRF-selected winners';
+      section.appendChild(winnersHeading);
+      section.appendChild(createWinnerContent(group));
+
+      const claimsHeading = document.createElement('h4');
+      claimsHeading.className = 'prize-modal__section-title';
+      claimsHeading.textContent = 'Prize claims';
+      section.appendChild(claimsHeading);
+      section.appendChild(createClaimsContent(group));
+
+      return section;
+    }
+
+    function buildTabPanelContent(descriptor) {
+      const panel = document.createElement('div');
+      panel.className = 'prize-modal__tab-panel-inner';
+      if (!descriptor || !Array.isArray(descriptor.groups) || descriptor.groups.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'prize-modal__empty';
+        empty.textContent = descriptor && descriptor.emptyMessage
+          ? descriptor.emptyMessage
+          : 'No prize information is available yet.';
+        panel.appendChild(empty);
+        return panel;
+      }
+      descriptor.groups.forEach((group) => {
+        panel.appendChild(buildPrizeGroupSection(group, descriptor.headingPrefix));
+      });
+      return panel;
+    }
+
+    function createPrizeTabs(tabDescriptors) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'prize-modal__tabs';
+
+      const buttonRow = document.createElement('div');
+      buttonRow.className = 'prize-modal__tab-buttons';
+      const panelsContainer = document.createElement('div');
+      panelsContainer.className = 'prize-modal__tab-panels';
+
+      let activeId = null;
+      const buttons = new Map();
+      const panels = new Map();
+
+      function setActive(id) {
+        if (!id || !buttons.has(id)) {
+          return;
+        }
+        activeId = id;
+        buttons.forEach((button, key) => {
+          if (key === id) {
+            button.classList.add('prize-modal__tab-button--active');
+            button.setAttribute('aria-pressed', 'true');
+          } else {
+            button.classList.remove('prize-modal__tab-button--active');
+            button.setAttribute('aria-pressed', 'false');
+          }
+        });
+        panels.forEach((panel, key) => {
+          panel.hidden = key !== id;
+        });
+      }
+
+      tabDescriptors.forEach((descriptor) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'prize-modal__tab-button';
+        button.textContent = descriptor.label;
+        const hasContent = Array.isArray(descriptor.groups) && descriptor.groups.length > 0;
+        if (!hasContent) {
+          button.disabled = true;
+          button.classList.add('prize-modal__tab-button--disabled');
+        }
+        button.addEventListener('click', () => {
+          if (button.disabled) {
+            return;
+          }
+          setActive(descriptor.id);
+        });
+        buttons.set(descriptor.id, button);
+        buttonRow.appendChild(button);
+
+        const panel = document.createElement('div');
+        panel.className = 'prize-modal__tab-panel';
+        panel.setAttribute('data-prize-panel', descriptor.id);
+        panel.appendChild(buildTabPanelContent(descriptor));
+        panels.set(descriptor.id, panel);
+        panelsContainer.appendChild(panel);
+      });
+
+      wrapper.appendChild(buttonRow);
+      wrapper.appendChild(panelsContainer);
+
+      const firstAvailable = tabDescriptors.find((descriptor) => Array.isArray(descriptor.groups) && descriptor.groups.length > 0)
+        || tabDescriptors[0];
+      if (firstAvailable) {
+        setActive(firstAvailable.id);
+      }
+
+      return wrapper;
+    }
+
     function renderPrizeDetails(data, week) {
       if (!bodyElement) {
         return;
       }
-      if (!data || data.status === 'coming-soon') {
+      if (!data || typeof data !== 'object') {
+        renderError();
+        return;
+      }
+      const selectedWinners = Array.isArray(data.selectedWinners) ? data.selectedWinners : [];
+      const prizeAssets = Array.isArray(data.prizeAssets) ? data.prizeAssets : [];
+      const mainAssetId = normaliseAssetId(data.assetId);
+      const assetGroups = collectPrizeAssetGroups({
+        winners: selectedWinners,
+        prizeAssets,
+        mainAssetId,
+      });
+      const hasWinnerData = selectedWinners.length > 0;
+      const hasAssetData = assetGroups.size > 0;
+
+      if (data.status === 'coming-soon' && !hasWinnerData && !hasAssetData) {
         renderComingSoon(data, week);
         return;
       }
+
       bodyElement.textContent = '';
       const fragment = document.createDocumentFragment();
 
@@ -1815,34 +2196,35 @@
         fragment.appendChild(asaParagraph);
       }
 
-      const message = document.createElement('p');
-      message.className = 'prize-modal__message';
-      message.textContent = `Congratulations to the Week ${week} prize winners!`;
-      fragment.appendChild(message);
+      const overview = document.createElement('p');
+      overview.className = 'prize-modal__message';
+      overview.textContent = 'Select a prize category to review VRF winners and prize claims.';
+      fragment.appendChild(overview);
 
-      const winnersHeading = document.createElement('h3');
-      winnersHeading.className = 'prize-modal__subheading';
-      winnersHeading.textContent = 'Winners';
-      fragment.appendChild(winnersHeading);
+      const mainGroup = mainAssetId !== null && assetGroups.has(mainAssetId)
+        ? assetGroups.get(mainAssetId)
+        : null;
+      const specialGroups = Array.from(assetGroups.values()).filter((group) => group.assetId !== mainAssetId);
 
-      const winners = Array.isArray(data.winners) ? data.winners : [];
-      if (winners.length > 0) {
-        const list = document.createElement('ul');
-        list.className = 'prize-modal__winners';
-        winners.forEach((address) => {
-          const item = document.createElement('li');
-          item.textContent = address;
-          list.appendChild(item);
-        });
-        fragment.appendChild(list);
-      } else {
-        const emptyState = document.createElement('p');
-        emptyState.className = 'prize-modal__empty';
-        emptyState.textContent = 'No prize holders have been recorded yet. Check back soon.';
-        fragment.appendChild(emptyState);
-      }
+      const tabs = createPrizeTabs([
+        {
+          id: 'main',
+          label: 'Main prize',
+          headingPrefix: 'Main prize',
+          groups: mainGroup ? [mainGroup] : [],
+          emptyMessage: 'No main prize winners have been recorded yet.',
+        },
+        {
+          id: 'special',
+          label: 'Special prizes',
+          headingPrefix: 'Special prize',
+          groups: specialGroups,
+          emptyMessage: 'No special prize winners have been recorded yet.',
+        },
+      ]);
+      fragment.appendChild(tabs);
 
-      const updatedLabel = formatPrizeTimestamp(data.updatedAt);
+      const updatedLabel = formatPrizeTimestamp(data.updatedAt || data.draw?.fetchedAt);
       if (updatedLabel) {
         const meta = document.createElement('p');
         meta.className = 'prize-modal__meta';
@@ -1854,10 +2236,18 @@
         fragment.appendChild(meta);
       }
 
+      const totalSelected = selectedWinners.length;
+      if (totalSelected > 0) {
+        const selectedMeta = document.createElement('p');
+        selectedMeta.className = 'prize-modal__meta';
+        selectedMeta.textContent = `VRF winners: ${totalSelected}`;
+        fragment.appendChild(selectedMeta);
+      }
+
       if (typeof data.winnersCount === 'number') {
         const countMeta = document.createElement('p');
         countMeta.className = 'prize-modal__meta';
-        countMeta.textContent = `Winner count: ${data.winnersCount}`;
+        countMeta.textContent = `Prize claims recorded: ${data.winnersCount}`;
         fragment.appendChild(countMeta);
       }
 

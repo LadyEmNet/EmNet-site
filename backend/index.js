@@ -16,6 +16,7 @@ import { promisify } from 'node:util';
 import { Agent, setGlobalDispatcher } from 'undici';
 
 import { APP_ID, DISTRIBUTOR_ALLOWLIST, WEEK_CONFIG, getAllowlistForAsset } from './config.js';
+import { fetchWeeklyDrawData, resolveDrawAppId, normaliseError as normaliseDrawError } from './drawService.js';
 import { getAllPrizes, getPrizeForWeek } from './prizeStore.js';
 
 const require = createRequire(import.meta.url);
@@ -244,6 +245,7 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const RAW_ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || 'https://emnetcm.com,https://www.emnetcm.com';
 const INDEXER_BASE = (process.env.INDEXER_BASE || 'https://mainnet-idx.algonode.cloud').replace(/\/+$/, '');
+const ALGOD_BASE = (process.env.ALGOD_BASE || 'https://mainnet-api.algonode.cloud').replace(/\/+$/, '');
 const CACHE_TTL_SECONDS = Number.parseInt(process.env.CACHE_TTL_SECONDS || '', 10) || 300;
 const MAX_RETRIES = Number.parseInt(process.env.INDEXER_MAX_RETRIES || '', 10) || 5;
 const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS || '', 10) || 500;
@@ -435,7 +437,17 @@ const assetHoldersCache = new NodeCache({
   useClones: false,
 });
 
+const weeklyDrawCache = new NodeCache({
+  stdTTL: 0,
+  checkperiod: 0,
+  useClones: false,
+});
+
 const MAX_HOLDER_CACHE_AGE_MS = Math.max(CACHE_TTL_SECONDS * 1000, 60 * 1000);
+const MAX_DRAW_CACHE_AGE_MS = Math.max(CACHE_TTL_SECONDS * 1000, 60 * 1000);
+
+let cachedDrawAppId = null;
+let drawAppIdPromise = null;
 
 function normalisePath(path) {
   if (!path.startsWith('/')) {
@@ -1782,6 +1794,219 @@ async function getAssetHolders(assetId) {
   }
 }
 
+async function getDrawAppIdCached() {
+  if (Number.isFinite(cachedDrawAppId) && cachedDrawAppId > 0) {
+    return cachedDrawAppId;
+  }
+  if (!drawAppIdPromise) {
+    drawAppIdPromise = resolveDrawAppId({
+      registryAppId: APP_ID,
+      indexerBase: INDEXER_BASE,
+      algodBase: ALGOD_BASE,
+    })
+      .then((value) => {
+        cachedDrawAppId = value;
+        drawAppIdPromise = null;
+        return value;
+      })
+      .catch((error) => {
+        drawAppIdPromise = null;
+        throw error;
+      });
+  }
+  return drawAppIdPromise;
+}
+
+async function getWeeklyDrawData(week) {
+  const cacheKey = `weekly-draw:${week}`;
+  const cachedWrapper = weeklyDrawCache.get(cacheKey);
+  const now = Date.now();
+  if (cachedWrapper && cachedWrapper.payload && typeof cachedWrapper.cachedAt === 'number') {
+    const age = now - cachedWrapper.cachedAt;
+    if (age <= MAX_DRAW_CACHE_AGE_MS) {
+      return { ...cachedWrapper.payload };
+    }
+  }
+
+  try {
+    const drawAppId = await getDrawAppIdCached();
+    const payload = await fetchWeeklyDrawData(week, {
+      registryAppId: APP_ID,
+      drawAppId,
+      indexerBase: INDEXER_BASE,
+      algodBase: ALGOD_BASE,
+    });
+    const enriched = { ...payload, fetchedAt: new Date().toISOString(), stale: false };
+    weeklyDrawCache.set(cacheKey, { payload: enriched, cachedAt: now });
+    return enriched;
+  } catch (error) {
+    if (cachedWrapper && cachedWrapper.payload) {
+      console.warn('[Algoland API] Weekly draw fetch falling back to cache', {
+        week,
+        message: error.message,
+      });
+      return { ...cachedWrapper.payload, stale: true };
+    }
+    throw error;
+  }
+}
+
+function sanitiseNumberLike(value) {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  return null;
+}
+
+function sanitiseNumberArray(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return [];
+  }
+  return values
+    .map((value) => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string' && /^\d+$/.test(value)) {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      if (typeof value === 'bigint') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    })
+    .filter((value) => value !== null);
+}
+
+function sanitiseStringArray(values) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return [];
+  }
+  return values
+    .map((value) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length ? trimmed : null;
+      }
+      if (value && typeof value.toString === 'function') {
+        const stringValue = value.toString();
+        return typeof stringValue === 'string' && stringValue.length ? stringValue : null;
+      }
+      return null;
+    })
+    .filter((value) => value !== null);
+}
+
+function sanitiseChallenge(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const challenge = {
+    questIds: sanitiseNumberArray(raw.questIds),
+    drawPrizeAssetIds: sanitiseNumberArray(raw.drawPrizeAssetIds),
+    numDrawEligibleAccounts: sanitiseNumberLike(raw.numDrawEligibleAccounts),
+    numDrawWinners: sanitiseNumberLike(raw.numDrawWinners),
+  };
+  if (raw.completionBadgeAssetId) {
+    challenge.completionBadgeAssetId = String(raw.completionBadgeAssetId);
+  }
+  if (raw.timeStart !== undefined) {
+    challenge.timeStart = sanitiseNumberLike(raw.timeStart);
+  }
+  if (raw.timeEnd !== undefined) {
+    challenge.timeEnd = sanitiseNumberLike(raw.timeEnd);
+  }
+  return challenge;
+}
+
+function sanitiseWeeklyState(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  return {
+    status: raw.status || null,
+    accountsIngested: sanitiseNumberLike(raw.accountsIngested),
+    lastRelativeId: sanitiseNumberLike(raw.lastRelativeId),
+    commitBlocks: sanitiseNumberArray(raw.commitBlocks),
+    winners: sanitiseNumberArray(raw.winners),
+    txIds: sanitiseStringArray(raw.txIds),
+  };
+}
+
+function sanitiseWinnerRecord(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  return {
+    relativeId: Number.isFinite(raw.relativeId) ? raw.relativeId : null,
+    address: typeof raw.address === 'string' ? raw.address : null,
+    referrerId: Number.isFinite(raw.referrerId) ? raw.referrerId : raw.referrerId ?? null,
+    points: typeof raw.points === 'number' ? raw.points : null,
+    redeemedPoints: typeof raw.redeemedPoints === 'number' ? raw.redeemedPoints : null,
+    weeklyDrawEntries: Number.isFinite(raw.weeklyDrawEntries) ? raw.weeklyDrawEntries : 0,
+    completedQuests: Array.isArray(raw.completedQuests) ? [...raw.completedQuests] : [],
+    completedChallenges: Array.isArray(raw.completedChallenges) ? [...raw.completedChallenges] : [],
+    numReferrals: Number.isFinite(raw.numReferrals) ? raw.numReferrals : 0,
+    referralIds: Array.isArray(raw.referralIds) ? [...raw.referralIds] : [],
+    availablePrizeAssetIds: Array.isArray(raw.availablePrizeAssetIds) ? [...raw.availablePrizeAssetIds] : [],
+    claimedPrizeAssetIds: Array.isArray(raw.claimedPrizeAssetIds) ? [...raw.claimedPrizeAssetIds] : [],
+  };
+}
+
+function sanitisePrizeAsset(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const descriptor = {
+    assetId: Number.isFinite(raw.assetId) ? raw.assetId : Number.parseInt(raw.assetId, 10) || null,
+    holders: Array.isArray(raw.holders) ? [...raw.holders] : [],
+    balances: Array.isArray(raw.balances) ? raw.balances.map((balance) => ({
+      address: typeof balance.address === 'string' ? balance.address : null,
+      amount: typeof balance.amount === 'string' ? balance.amount : String(balance.amount ?? ''),
+    })) : [],
+    updatedAt: raw.updatedAt || null,
+    source: raw.source || null,
+    meta: raw.meta && typeof raw.meta === 'object' ? { ...raw.meta } : null,
+  };
+  if (raw.error) {
+    descriptor.error = raw.error;
+  }
+  if (raw.stale) {
+    descriptor.stale = true;
+  }
+  return descriptor;
+}
+
+function buildDrawPayload(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const winners = Array.isArray(raw.winners)
+    ? raw.winners.map(sanitiseWinnerRecord).filter(Boolean)
+    : [];
+  const prizeAssets = Array.isArray(raw.prizeAssets)
+    ? raw.prizeAssets.map(sanitisePrizeAsset).filter(Boolean)
+    : [];
+  return {
+    week: Number.isFinite(raw.week) ? raw.week : Number.parseInt(raw.week, 10) || null,
+    fetchedAt: raw.fetchedAt || null,
+    stale: Boolean(raw.stale),
+    challenge: sanitiseChallenge(raw.challenge),
+    weeklyState: sanitiseWeeklyState(raw.weeklyState),
+    winners,
+    prizeAssets,
+  };
+}
+
 function sendCachedOrError(res, error) {
   console.error('[Algoland API] Request failed', { message: error.message });
   res.status(502).json({
@@ -1901,43 +2126,86 @@ app.get('/api/prizes/:week', async (req, res) => {
     return;
   }
 
-  if (!prize.assetId || !prize.image) {
-    res.json({
-      week: prize.week,
-      status: 'coming-soon',
-      asa: prize.asa,
-      assetId: prize.assetId ?? null,
-      image: prize.image ?? null,
-      message: 'Prize details coming soon. Check back soon.',
-    });
-    return;
+  const responseBody = {
+    week: prize.week,
+    status: prize.assetId && prize.image ? 'available' : 'coming-soon',
+    asa: prize.asa,
+    assetId: prize.assetId ?? null,
+    image: prize.image ?? null,
+    winners: [],
+    winnersCount: 0,
+    prizeAssets: [],
+    selectedWinners: [],
+  };
+
+  if (responseBody.status === 'coming-soon') {
+    responseBody.message = 'Prize details coming soon. Check back soon.';
   }
 
+  let drawData = null;
+  let drawError = null;
   try {
-    const holdersPayload = await getAssetHolders(prize.assetId);
-    const winners = Array.isArray(holdersPayload.holders) ? holdersPayload.holders : [];
-    const responseBody = {
-      week: prize.week,
-      status: 'available',
-      asa: prize.asa,
-      assetId: prize.assetId,
-      image: prize.image,
-      winners,
-      winnersCount: winners.length,
-      updatedAt: holdersPayload.updatedAt,
-      source: holdersPayload.source,
-    };
-    if (holdersPayload.meta) {
-      responseBody.meta = holdersPayload.meta;
-    }
-    if (holdersPayload.stale) {
-      responseBody.stale = true;
-      responseBody.status = 'stale';
-    }
-    res.json(responseBody);
+    drawData = await getWeeklyDrawData(prize.week);
   } catch (error) {
-    sendCachedOrError(res, error);
+    drawError = error;
   }
+
+  if (drawData) {
+    const drawPayload = buildDrawPayload(drawData);
+    if (drawPayload) {
+      responseBody.draw = drawPayload;
+      responseBody.prizeAssets = Array.isArray(drawPayload.prizeAssets) ? drawPayload.prizeAssets : [];
+      responseBody.selectedWinners = Array.isArray(drawPayload.winners) ? drawPayload.winners : [];
+      if (drawPayload.stale) {
+        responseBody.stale = true;
+        if (responseBody.status === 'available') {
+          responseBody.status = 'stale';
+        }
+      }
+      if (prize.assetId) {
+        const mainAsset = responseBody.prizeAssets.find((asset) => asset.assetId === prize.assetId);
+        if (mainAsset) {
+          responseBody.winners = Array.isArray(mainAsset.holders) ? [...mainAsset.holders] : [];
+          responseBody.winnersCount = responseBody.winners.length;
+          if (mainAsset.updatedAt) {
+            responseBody.updatedAt = mainAsset.updatedAt;
+          } else if (drawPayload.fetchedAt) {
+            responseBody.updatedAt = drawPayload.fetchedAt;
+          }
+          if (mainAsset.source) {
+            responseBody.source = mainAsset.source;
+          }
+          if (mainAsset.meta) {
+            responseBody.meta = mainAsset.meta;
+          }
+          if (mainAsset.error) {
+            responseBody.winnerError = mainAsset.error;
+          }
+          if (mainAsset.stale) {
+            responseBody.stale = true;
+            responseBody.status = 'stale';
+          }
+        }
+      }
+    }
+  } else if (drawError) {
+    responseBody.draw = { error: normaliseDrawError(drawError) };
+  }
+
+  if (!Array.isArray(responseBody.winners)) {
+    responseBody.winners = [];
+  }
+  if (typeof responseBody.winnersCount !== 'number') {
+    responseBody.winnersCount = responseBody.winners.length;
+  }
+  if (!Array.isArray(responseBody.prizeAssets)) {
+    responseBody.prizeAssets = [];
+  }
+  if (!Array.isArray(responseBody.selectedWinners)) {
+    responseBody.selectedWinners = [];
+  }
+
+  res.json(responseBody);
 });
 
 app.get('/api/completions', async (req, res) => {
