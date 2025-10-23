@@ -2438,6 +2438,204 @@ body.lookup-modal-open {
   word-break: break-all;
 }
 
+.prize-modal__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 20px);
+}
+
+.prize-modal__tab-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.prize-modal__tab-button {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(38, 211, 197, 0.35);
+  background: rgba(38, 211, 197, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.prize-modal__tab-button:hover,
+.prize-modal__tab-button:focus-visible {
+  background: rgba(38, 211, 197, 0.15);
+  border-color: rgba(38, 211, 197, 0.6);
+  color: #26d3c5;
+  outline: none;
+}
+
+.prize-modal__tab-button--active {
+  background: rgba(38, 211, 197, 0.22);
+  border-color: rgba(38, 211, 197, 0.85);
+  color: #26d3c5;
+}
+
+.prize-modal__tab-button--disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.prize-modal__tab-panels {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 4vw, 24px);
+}
+
+.prize-modal__tab-panel[hidden] {
+  display: none;
+}
+
+.prize-modal__tab-panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 4vw, 26px);
+}
+
+.prize-modal__group {
+  padding: clamp(18px, 4vw, 24px);
+  border-radius: 18px;
+  background: rgba(8, 12, 22, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 3vw, 18px);
+}
+
+.prize-modal__group-heading {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(38, 211, 197, 0.92);
+}
+
+.prize-modal__section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.prize-modal__winner-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prize-modal__winner {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.92);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prize-modal__winner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prize-modal__winner-id {
+  border: none;
+  border-radius: 999px;
+  background: rgba(38, 211, 197, 0.18);
+  color: #26d3c5;
+  padding: 6px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.prize-modal__winner-id:hover,
+.prize-modal__winner-id:focus-visible {
+  background: rgba(38, 211, 197, 0.3);
+  color: #1eb4a2;
+  outline: none;
+}
+
+.prize-modal__winner-status {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prize-modal__winner-status--claimed {
+  background: rgba(38, 211, 197, 0.22);
+  color: #26d3c5;
+}
+
+.prize-modal__winner-status--pending {
+  background: rgba(255, 196, 77, 0.2);
+  color: #ffc44d;
+}
+
+.prize-modal__winner-status--unknown {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.prize-modal__winner-address {
+  margin: 0;
+  font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.78);
+  word-break: break-all;
+}
+
+.prize-modal__winner-details {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.85rem;
+}
+
+.prize-modal__claim-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prize-modal__claim-item {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(28, 28, 28, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.78);
+  word-break: break-all;
+}
+
 .prize-modal__empty {
   margin: 0;
   font-size: 0.95rem;
