@@ -4,7 +4,30 @@
   { "week": 3, "asa": "3215542837", "image": "Prize3.png" },
   { "week": 4, "asa": "3257999518", "image": "Prize4.png" },
   { "week": 5, "asa": "3257999523", "image": "Prize5.png" },
-  { "week": 6, "asa": "Coming soon", "image": null },
+  {
+    "week": 6,
+    "asa": ["3257999514", "3257999513"],
+    "image": null,
+    "mainPrizes": [
+      {
+        "assetId": 3257999514,
+        "title": "MS Pacman Game",
+        "image": "Prize6.png"
+      },
+      {
+        "assetId": 3257999513,
+        "title": "Creality 3D Printer",
+        "image": "Prize7.png"
+      }
+    ],
+    "specialPrizes": [
+      {
+        "assetId": 3257999515,
+        "title": "Secret prize",
+        "image": "secretprize.png"
+      }
+    ]
+  },
   { "week": 7, "asa": "Coming soon", "image": null },
   { "week": 8, "asa": "Coming soon", "image": null },
   { "week": 9, "asa": "Coming soon", "image": null },

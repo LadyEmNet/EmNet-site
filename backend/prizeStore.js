@@ -13,6 +13,9 @@ function createDefaultPrize(week) {
     assetId: null,
     image: null,
     status: 'coming-soon',
+    mainPrizes: [],
+    specialPrizes: [],
+    mainAssetIds: [],
   };
 }
 
@@ -27,6 +30,55 @@ function normaliseString(value) {
   return '';
 }
 
+function normaliseAssetId(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const truncated = Math.trunc(value);
+    return truncated > 0 ? truncated : null;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const parsed = Number.parseInt(trimmed, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+  }
+  return null;
+}
+
+function normalisePrizeVisualItem(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const assetId = normaliseAssetId(raw.assetId ?? raw.asa ?? raw.id ?? raw.asset);
+  const asaLabelSource = raw.asa ?? raw.ASA ?? raw.assetId ?? raw.id ?? raw.asset;
+  const asaLabel = normaliseString(asaLabelSource);
+  const image = normaliseString(raw.image ?? raw.imageName ?? raw.icon ?? raw.filename);
+  const title = normaliseString(raw.title ?? raw.name ?? raw.label ?? raw.description);
+  const descriptor = {
+    assetId,
+    asa: asaLabel || (assetId ? String(assetId) : null),
+    image: image || null,
+    title: title || null,
+  };
+  return descriptor;
+}
+
+function normalisePrizeVisualArray(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw
+    .map((item) => {
+      if (typeof item === 'string' || typeof item === 'number') {
+        return normalisePrizeVisualItem({ assetId: item });
+      }
+      return normalisePrizeVisualItem(item);
+    })
+    .filter((item) => item && (item.assetId !== null || item.image || item.title));
+}
+
 function normalisePrizeEntry(rawEntry) {
   if (!rawEntry || typeof rawEntry !== 'object') {
     return null;
@@ -38,12 +90,23 @@ function normalisePrizeEntry(rawEntry) {
   const entry = createDefaultPrize(weekNumber);
 
   const asaRaw = rawEntry.asa ?? rawEntry.ASA ?? rawEntry.assetId ?? rawEntry.asset ?? rawEntry.id;
-  const asaLabel = normaliseString(asaRaw);
-  if (asaLabel) {
-    entry.asa = asaLabel;
-    if (/^\d+$/.test(asaLabel)) {
-      const parsedAssetId = Number.parseInt(asaLabel, 10);
-      if (Number.isFinite(parsedAssetId) && parsedAssetId > 0) {
+  if (Array.isArray(asaRaw)) {
+    const asaLabels = asaRaw.map(normaliseString).filter(Boolean);
+    if (asaLabels.length > 0) {
+      entry.asa = asaLabels.join(' · ');
+    }
+    const firstAssetId = asaRaw
+      .map((value) => normaliseAssetId(value))
+      .find((value) => value !== null);
+    if (firstAssetId !== null) {
+      entry.assetId = firstAssetId;
+    }
+  } else {
+    const asaLabel = normaliseString(asaRaw);
+    if (asaLabel) {
+      entry.asa = asaLabel;
+      const parsedAssetId = normaliseAssetId(asaLabel);
+      if (parsedAssetId !== null) {
         entry.assetId = parsedAssetId;
         entry.asa = String(parsedAssetId);
       }
@@ -56,7 +119,40 @@ function normalisePrizeEntry(rawEntry) {
     entry.image = imageName;
   }
 
-  if (entry.assetId && entry.image) {
+  const mainPrizes = normalisePrizeVisualArray(rawEntry.mainPrizes ?? rawEntry.gallery ?? rawEntry.mainPrizeImages);
+  if (mainPrizes.length > 0) {
+    entry.mainPrizes = mainPrizes;
+    entry.mainAssetIds = mainPrizes
+      .map((item) => item.assetId)
+      .filter((value) => Number.isInteger(value));
+    if (!entry.image) {
+      const firstImage = mainPrizes.find((item) => item.image);
+      if (firstImage) {
+        entry.image = firstImage.image;
+      }
+    }
+    if (entry.asa === 'Coming soon') {
+      const asaLabels = mainPrizes
+        .map((item) => item.asa || (item.assetId ? String(item.assetId) : ''))
+        .filter(Boolean);
+      if (asaLabels.length > 0) {
+        entry.asa = asaLabels.join(' · ');
+      }
+    }
+    if (entry.assetId === null) {
+      const firstAssetId = entry.mainAssetIds.find((value) => value !== null);
+      if (typeof firstAssetId === 'number') {
+        entry.assetId = firstAssetId;
+      }
+    }
+  }
+
+  const specialPrizes = normalisePrizeVisualArray(rawEntry.specialPrizes);
+  if (specialPrizes.length > 0) {
+    entry.specialPrizes = specialPrizes;
+  }
+
+  if (entry.assetId && (entry.image || entry.mainPrizes.length > 0)) {
     entry.status = 'available';
   }
 

@@ -21,7 +21,7 @@
     { week: 3, assetId: '3215542836', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-06' },
     { week: 4, assetId: '3257999517', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-13' },
     { week: 5, assetId: '3257999522', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
-    { week: 6, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
+    { week: 6, assetId: '3257999512', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
     { week: 7, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-03' },
     { week: 8, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-10' },
     { week: 9, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-17' },
@@ -1831,8 +1831,13 @@
       return null;
     }
 
-    function collectPrizeAssetGroups({ winners, prizeAssets, mainAssetId }) {
+    function collectPrizeAssetGroups({ winners, prizeAssets, mainAssetIds }) {
       const groups = new Map();
+      const mainIds = Array.isArray(mainAssetIds)
+        ? mainAssetIds
+            .map((value) => normaliseAssetId(value))
+            .filter((value) => value !== null)
+        : [];
 
       function ensureGroup(assetId) {
         if (!groups.has(assetId)) {
@@ -1871,8 +1876,10 @@
             allAssetIds.add(parsedId);
           }
         });
-        if (allAssetIds.size === 0 && mainAssetId !== null) {
-          allAssetIds.add(mainAssetId);
+        if (allAssetIds.size === 0 && mainIds.length > 0) {
+          mainIds.forEach((assetId) => {
+            allAssetIds.add(assetId);
+          });
         }
         allAssetIds.forEach((assetId) => {
           const group = ensureGroup(assetId);
@@ -1880,13 +1887,15 @@
         });
       });
 
-      if (mainAssetId !== null && !groups.has(mainAssetId)) {
-        groups.set(mainAssetId, {
-          assetId: mainAssetId,
-          winners: [],
-          asset: null,
-        });
-      }
+      mainIds.forEach((assetId) => {
+        if (!groups.has(assetId)) {
+          groups.set(assetId, {
+            assetId,
+            winners: [],
+            asset: null,
+          });
+        }
+      });
 
       return groups;
     }
@@ -2094,7 +2103,17 @@
     function buildTabPanelContent(descriptor) {
       const panel = document.createElement('div');
       panel.className = 'prize-modal__tab-panel-inner';
-      if (!descriptor || !Array.isArray(descriptor.groups) || descriptor.groups.length === 0) {
+      const groups = Array.isArray(descriptor?.groups) ? descriptor.groups : [];
+      const visuals = Array.isArray(descriptor?.visuals) ? descriptor.visuals : [];
+
+      if (visuals.length > 0) {
+        const gallery = createPrizeGallery(visuals, { variant: 'inline' });
+        if (gallery) {
+          panel.appendChild(gallery);
+        }
+      }
+
+      if (!descriptor || groups.length === 0) {
         const empty = document.createElement('p');
         empty.className = 'prize-modal__empty';
         empty.textContent = descriptor && descriptor.emptyMessage
@@ -2103,7 +2122,7 @@
         panel.appendChild(empty);
         return panel;
       }
-      descriptor.groups.forEach((group) => {
+      groups.forEach((group) => {
         panel.appendChild(buildPrizeGroupSection(group, descriptor.headingPrefix));
       });
       return panel;
@@ -2146,7 +2165,9 @@
         button.type = 'button';
         button.className = 'prize-modal__tab-button';
         button.textContent = descriptor.label;
-        const hasContent = Array.isArray(descriptor.groups) && descriptor.groups.length > 0;
+        const hasGroups = Array.isArray(descriptor.groups) && descriptor.groups.length > 0;
+        const hasVisuals = Array.isArray(descriptor.visuals) && descriptor.visuals.length > 0;
+        const hasContent = hasGroups || hasVisuals;
         if (!hasContent) {
           button.disabled = true;
           button.classList.add('prize-modal__tab-button--disabled');
@@ -2171,13 +2192,70 @@
       wrapper.appendChild(buttonRow);
       wrapper.appendChild(panelsContainer);
 
-      const firstAvailable = tabDescriptors.find((descriptor) => Array.isArray(descriptor.groups) && descriptor.groups.length > 0)
-        || tabDescriptors[0];
+      const firstAvailable = tabDescriptors.find((descriptor) => {
+        const hasGroups = Array.isArray(descriptor.groups) && descriptor.groups.length > 0;
+        const hasVisuals = Array.isArray(descriptor.visuals) && descriptor.visuals.length > 0;
+        return hasGroups || hasVisuals;
+      }) || tabDescriptors[0];
       if (firstAvailable) {
         setActive(firstAvailable.id);
       }
 
       return wrapper;
+    }
+
+    function createPrizeGallery(items, { variant } = {}) {
+      if (!Array.isArray(items) || items.length === 0) {
+        return null;
+      }
+      const gallery = document.createElement('div');
+      gallery.className = 'prize-modal__gallery';
+      if (variant === 'inline') {
+        gallery.classList.add('prize-modal__gallery--inline');
+      }
+
+      items.forEach((item) => {
+        if (!item || typeof item !== 'object') {
+          return;
+        }
+        const figure = document.createElement('figure');
+        figure.className = 'prize-modal__gallery-item';
+
+        if (item.image) {
+          const image = document.createElement('img');
+          image.className = 'prize-modal__gallery-image';
+          image.src = buildPrizeImageUrl(item.image);
+          image.alt = item.title ? item.title : 'Prize image';
+          image.decoding = 'async';
+          image.loading = 'lazy';
+          figure.appendChild(image);
+        }
+
+        const captionParts = [];
+        if (item.title) {
+          captionParts.push(item.title);
+        }
+        if (item.asa || item.assetId) {
+          const asaValue = item.asa || item.assetId;
+          captionParts.push(`ASA ${asaValue}`);
+        }
+        if (captionParts.length > 0) {
+          const caption = document.createElement('figcaption');
+          caption.className = 'prize-modal__gallery-caption';
+          caption.textContent = captionParts.join(' · ');
+          figure.appendChild(caption);
+        }
+
+        if (figure.children.length > 0) {
+          gallery.appendChild(figure);
+        }
+      });
+
+      if (gallery.children.length === 0) {
+        return null;
+      }
+
+      return gallery;
     }
 
     function renderPrizeDetails(data, week) {
@@ -2190,14 +2268,32 @@
       }
       const selectedWinners = Array.isArray(data.selectedWinners) ? data.selectedWinners : [];
       const prizeAssets = Array.isArray(data.prizeAssets) ? data.prizeAssets : [];
-      const mainAssetId = normaliseAssetId(data.assetId);
+      const mainPrizes = Array.isArray(data.mainPrizes) ? data.mainPrizes : [];
+      const specialPrizes = Array.isArray(data.specialPrizes) ? data.specialPrizes : [];
+      const mainAssetIds = Array.isArray(data.mainAssetIds)
+        ? data.mainAssetIds
+            .map((value) => normaliseAssetId(value))
+            .filter((value) => value !== null)
+        : [];
+      const fallbackMainAssetId = normaliseAssetId(data.assetId);
+      if (mainAssetIds.length === 0 && fallbackMainAssetId !== null) {
+        mainAssetIds.push(fallbackMainAssetId);
+      }
+      if (mainAssetIds.length === 0 && mainPrizes.length > 0) {
+        mainPrizes.forEach((item) => {
+          const parsed = normaliseAssetId(item && item.assetId);
+          if (parsed !== null && !mainAssetIds.includes(parsed)) {
+            mainAssetIds.push(parsed);
+          }
+        });
+      }
       const assetGroups = collectPrizeAssetGroups({
         winners: selectedWinners,
         prizeAssets,
-        mainAssetId,
+        mainAssetIds,
       });
       const hasWinnerData = selectedWinners.length > 0;
-      const hasAssetData = assetGroups.size > 0;
+      const hasAssetData = prizeAssets.length > 0;
 
       if (data.status === 'coming-soon' && !hasWinnerData && !hasAssetData) {
         renderComingSoon(data, week);
@@ -2207,7 +2303,7 @@
       bodyElement.textContent = '';
       const fragment = document.createDocumentFragment();
 
-      if (data.image) {
+      if (data.image && mainPrizes.length === 0) {
         const image = document.createElement('img');
         image.className = 'prize-modal__image';
         image.src = buildPrizeImageUrl(data.image);
@@ -2215,6 +2311,11 @@
         image.decoding = 'async';
         image.loading = 'lazy';
         fragment.appendChild(image);
+      }
+
+      const mainGallery = createPrizeGallery(mainPrizes);
+      if (mainGallery) {
+        fragment.appendChild(mainGallery);
       }
 
       if (data.asa) {
@@ -2229,17 +2330,22 @@
       overview.textContent = 'Select a prize category to review VRF winners and prize claims.';
       fragment.appendChild(overview);
 
-      const mainGroup = mainAssetId !== null && assetGroups.has(mainAssetId)
-        ? assetGroups.get(mainAssetId)
-        : null;
-      const specialGroups = Array.from(assetGroups.values()).filter((group) => group.assetId !== mainAssetId);
+      const mainGroups = mainAssetIds
+        .map((assetId) => assetGroups.get(assetId))
+        .filter((group) => Boolean(group));
+      const specialGroups = Array.from(assetGroups.values()).filter((group) => {
+        if (group.assetId === null) {
+          return true;
+        }
+        return !mainAssetIds.includes(group.assetId);
+      });
 
       const tabs = createPrizeTabs([
         {
           id: 'main',
           label: 'Main prize',
           headingPrefix: 'Main prize',
-          groups: mainGroup ? [mainGroup] : [],
+          groups: mainGroups,
           emptyMessage: 'No main prize winners have been recorded yet.',
         },
         {
@@ -2248,6 +2354,7 @@
           headingPrefix: 'Special prize',
           groups: specialGroups,
           emptyMessage: 'No special prize winners have been recorded yet.',
+          visuals: specialPrizes,
         },
       ]);
       fragment.appendChild(tabs);
@@ -2287,7 +2394,8 @@
         return;
       }
       bodyElement.textContent = '';
-      if (data && data.image) {
+      const mainPrizes = Array.isArray(data?.mainPrizes) ? data.mainPrizes : [];
+      if (data && data.image && mainPrizes.length === 0) {
         const image = document.createElement('img');
         image.className = 'prize-modal__image';
         image.src = buildPrizeImageUrl(data.image);
@@ -2295,6 +2403,10 @@
         image.decoding = 'async';
         image.loading = 'lazy';
         bodyElement.appendChild(image);
+      }
+      const gallery = createPrizeGallery(mainPrizes);
+      if (gallery) {
+        bodyElement.appendChild(gallery);
       }
       const message = document.createElement('p');
       message.className = 'prize-modal__message';
