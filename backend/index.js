@@ -2095,6 +2095,9 @@ app.get('/api/prizes', async (req, res) => {
         asa: prize.asa,
         assetId: prize.assetId ?? null,
         image: prize.image ?? null,
+        mainAssetIds: Array.isArray(prize.mainAssetIds) ? [...prize.mainAssetIds] : [],
+        mainPrizes: Array.isArray(prize.mainPrizes) ? [...prize.mainPrizes] : [],
+        specialPrizes: Array.isArray(prize.specialPrizes) ? [...prize.specialPrizes] : [],
       })),
     });
   } catch (error) {
@@ -2128,10 +2131,16 @@ app.get('/api/prizes/:week', async (req, res) => {
 
   const responseBody = {
     week: prize.week,
-    status: prize.assetId && prize.image ? 'available' : 'coming-soon',
+    status:
+      prize.assetId && (prize.image || (Array.isArray(prize.mainPrizes) && prize.mainPrizes.length > 0))
+        ? 'available'
+        : 'coming-soon',
     asa: prize.asa,
     assetId: prize.assetId ?? null,
     image: prize.image ?? null,
+    mainAssetIds: Array.isArray(prize.mainAssetIds) ? [...prize.mainAssetIds] : [],
+    mainPrizes: Array.isArray(prize.mainPrizes) ? [...prize.mainPrizes] : [],
+    specialPrizes: Array.isArray(prize.specialPrizes) ? [...prize.specialPrizes] : [],
     winners: [],
     winnersCount: 0,
     prizeAssets: [],
