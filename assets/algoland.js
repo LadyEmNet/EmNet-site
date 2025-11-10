@@ -23,7 +23,7 @@
     { week: 5, assetId: '3257999522', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-20' },
     { week: 6, assetId: '3257999512', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-10-27' },
     { week: 7, assetId: '3300006143', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-03' },
-    { week: 8, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-10' },
+    { week: 8, assetId: '3311114041', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-10' },
     { week: 9, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-17' },
     { week: 10, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-24' },
     { week: 11, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-01' },
