@@ -398,37 +398,43 @@
     }
 
     const liveWeeks = weeksConfig.filter((config) => Boolean(config.assetId));
-    for (const config of liveWeeks) {
+    const completionPromises = liveWeeks.map((config) => {
       const weekRecord = nextSnapshot.weeks.find((week) => week.week === config.week);
-      try {
-        const result = await fetchCompletions(config.assetId);
-        if (result) {
-          weekRecord.completions = result.completions;
-          weekRecord.updatedAt = result.updatedAt;
-          weekRecord.source = result.source || null;
-          weekRecord.stale = Boolean(result.stale);
-          weekRecord.unavailable = false;
-          if (result.stale) {
-            alerts.push({ type: 'warning', text: `Week ${config.week} completions are stale until the indexer recovers.` });
+      return (async () => {
+        try {
+          const result = await fetchCompletions(config.assetId);
+          if (result) {
+            weekRecord.completions = result.completions;
+            weekRecord.updatedAt = result.updatedAt;
+            weekRecord.source = result.source || null;
+            weekRecord.stale = Boolean(result.stale);
+            weekRecord.unavailable = false;
+            if (result.stale) {
+              alerts.push({ type: 'warning', text: `Week ${config.week} completions are stale until the indexer recovers.` });
+            }
+          } else if (weekRecord.completions === null) {
+            weekRecord.unavailable = true;
+            alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
+          } else {
+            weekRecord.stale = true;
+            alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
           }
-        } else if (weekRecord.completions === null) {
-          weekRecord.unavailable = true;
-          alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
-        } else {
-          weekRecord.stale = true;
-          alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
+          return { config, result };
+        } catch (error) {
+          console.warn('[Algoland] Failed to fetch completions', { assetId: config.assetId, error });
+          if (typeof weekRecord.completions === 'number') {
+            weekRecord.stale = true;
+            alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
+          } else {
+            weekRecord.unavailable = true;
+            alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
+          }
+          return { config, error };
         }
-      } catch (error) {
-        console.warn('[Algoland] Failed to fetch completions', { assetId: config.assetId, error });
-        if (typeof weekRecord.completions === 'number') {
-          weekRecord.stale = true;
-          alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
-        } else {
-          weekRecord.unavailable = true;
-          alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
-        }
-      }
-    }
+      })();
+    });
+
+    await Promise.allSettled(completionPromises);
 
     nextSnapshot.timestamp = new Date().toISOString();
     state.snapshot = nextSnapshot;
