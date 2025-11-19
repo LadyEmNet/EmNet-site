@@ -30,7 +30,17 @@
   },
   { "week": 7, "asa": "3300006144", "image": "Prize8.png" },
   { "week": 8, "asa": "3311114042", "image": "Prize9.PNG" },
-  { "week": 9, "asa": "Coming soon", "image": null },
+  {
+    "week": 9,
+    "asa": "3323502873",
+    "image": "week9.png",
+    "mainPrizes": [
+      {
+        "assetId": 3323502873,
+        "title": "Week 9 Algoland VRF prize minted by HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM"
+      }
+    ]
+  },
   { "week": 10, "asa": "Coming soon", "image": null },
   { "week": 11, "asa": "Coming soon", "image": null },
   { "week": 12, "asa": "Coming soon", "image": null },
