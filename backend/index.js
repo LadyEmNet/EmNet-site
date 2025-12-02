@@ -7,7 +7,7 @@ import path from 'node:path';
 import { setDefaultResultOrder } from 'node:dns';
 import { createRequire } from 'node:module';
 import { STATUS_CODES } from 'node:http';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -79,9 +79,19 @@ async function createCurlFetch(input, init = {}) {
     args.push('-X', method);
   }
 
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'algoland-fetch-'));
+  const responseBodyPath = path.join(tempDir, 'body');
+  const headerPath = path.join(tempDir, 'headers');
+
   if (init.body !== undefined && init.body !== null) {
     let serialisedBody = init.body;
-    if (typeof serialisedBody === 'object' && !(serialisedBody instanceof Uint8Array)) {
+    let bodyFilePath;
+
+    if (serialisedBody instanceof ArrayBuffer) {
+      serialisedBody = Buffer.from(serialisedBody);
+    } else if (ArrayBuffer.isView(serialisedBody)) {
+      serialisedBody = Buffer.from(serialisedBody.buffer, serialisedBody.byteOffset, serialisedBody.byteLength);
+    } else if (typeof serialisedBody === 'object' && !(serialisedBody instanceof Uint8Array)) {
       if (typeof serialisedBody.toString === 'function' && serialisedBody.toString !== Object.prototype.toString) {
         serialisedBody = serialisedBody.toString();
       } else {
@@ -92,21 +102,21 @@ async function createCurlFetch(input, init = {}) {
         }
       }
     }
-    if (serialisedBody instanceof ArrayBuffer) {
-      serialisedBody = Buffer.from(serialisedBody).toString('utf8');
+
+    if (serialisedBody instanceof Uint8Array || (typeof serialisedBody === 'string' && serialisedBody.includes('\0'))) {
+      bodyFilePath = path.join(tempDir, 'request-body');
+      const bodyBuffer = serialisedBody instanceof Uint8Array
+        ? Buffer.from(serialisedBody)
+        : Buffer.from(serialisedBody, 'utf8');
+      await writeFile(bodyFilePath, bodyBuffer);
+      args.push('--data-binary', `@${bodyFilePath}`);
+    } else {
+      args.push('--data-binary', typeof serialisedBody === 'string' ? serialisedBody : String(serialisedBody));
     }
-    if (ArrayBuffer.isView(serialisedBody)) {
-      serialisedBody = Buffer.from(serialisedBody).toString('utf8');
-    }
-    args.push('--data-binary', typeof serialisedBody === 'string' ? serialisedBody : String(serialisedBody));
   }
 
-  const tempDir = await mkdtemp(path.join(tmpdir(), 'algoland-fetch-'));
-  const bodyPath = path.join(tempDir, 'body');
-  const headerPath = path.join(tempDir, 'headers');
-
   args.push(...headerArgs);
-  args.push('--output', bodyPath);
+  args.push('--output', responseBodyPath);
   args.push('--dump-header', headerPath);
   args.push(url);
 
@@ -127,7 +137,7 @@ async function createCurlFetch(input, init = {}) {
     throw new Error(`Invalid status code from curl response: ${statusLine}`);
   }
 
-  const bodyBuffer = await readFile(bodyPath);
+  const bodyBuffer = await readFile(responseBodyPath);
   const bodyText = bodyBuffer.toString('utf8');
   let headerText = '';
   try {
