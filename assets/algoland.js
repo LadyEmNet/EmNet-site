@@ -398,12 +398,17 @@
     }
 
     const liveWeeks = weeksConfig.filter((config) => Boolean(config.assetId));
-    const completionPromises = liveWeeks.map((config) => {
-      const weekRecord = nextSnapshot.weeks.find((week) => week.week === config.week);
-      return (async () => {
-        try {
-          const result = await fetchCompletions(config.assetId);
-          if (result) {
+    let handledByBulkRequest = false;
+
+    try {
+      const batchResult = await fetchCompletionsBatch(liveWeeks.map((config) => config.assetId));
+      if (batchResult) {
+        handledByBulkRequest = true;
+        liveWeeks.forEach((config) => {
+          const weekRecord = nextSnapshot.weeks.find((week) => week.week === config.week);
+          const result = batchResult.results.get(String(config.assetId));
+
+          if (result && typeof result.completions === 'number') {
             weekRecord.completions = result.completions;
             weekRecord.updatedAt = result.updatedAt;
             weekRecord.source = result.source || null;
@@ -419,22 +424,58 @@
             weekRecord.stale = true;
             alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
           }
-          return { config, result };
-        } catch (error) {
-          console.warn('[Algoland] Failed to fetch completions', { assetId: config.assetId, error });
-          if (typeof weekRecord.completions === 'number') {
-            weekRecord.stale = true;
-            alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
-          } else {
-            weekRecord.unavailable = true;
-            alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
-          }
-          return { config, error };
-        }
-      })();
-    });
+        });
 
-    await Promise.allSettled(completionPromises);
+        if (batchResult.invalidAssets.length > 0) {
+          alerts.push({
+            type: 'warning',
+            text: 'Some badge IDs could not be loaded because they were invalid.',
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('[Algoland] Bulk completions request failed, falling back to per-week requests', error);
+    }
+
+    if (!handledByBulkRequest) {
+      const completionPromises = liveWeeks.map((config) => {
+        const weekRecord = nextSnapshot.weeks.find((week) => week.week === config.week);
+        return (async () => {
+          try {
+            const result = await fetchCompletions(config.assetId);
+            if (result) {
+              weekRecord.completions = result.completions;
+              weekRecord.updatedAt = result.updatedAt;
+              weekRecord.source = result.source || null;
+              weekRecord.stale = Boolean(result.stale);
+              weekRecord.unavailable = false;
+              if (result.stale) {
+                alerts.push({ type: 'warning', text: `Week ${config.week} completions are stale until the indexer recovers.` });
+              }
+            } else if (weekRecord.completions === null) {
+              weekRecord.unavailable = true;
+              alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
+            } else {
+              weekRecord.stale = true;
+              alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
+            }
+            return { config, result };
+          } catch (error) {
+            console.warn('[Algoland] Failed to fetch completions', { assetId: config.assetId, error });
+            if (typeof weekRecord.completions === 'number') {
+              weekRecord.stale = true;
+              alerts.push({ type: 'warning', text: `Week ${config.week} completions were served from cache.` });
+            } else {
+              weekRecord.unavailable = true;
+              alerts.push({ type: 'warning', text: `Week ${config.week} completions are currently unavailable.` });
+            }
+            return { config, error };
+          }
+        })();
+      });
+
+      await Promise.allSettled(completionPromises);
+    }
 
     nextSnapshot.timestamp = new Date().toISOString();
     state.snapshot = nextSnapshot;
@@ -482,6 +523,48 @@
       return null;
     }
     return data;
+  }
+
+  async function fetchCompletionsBatch(assetIds) {
+    if (!Array.isArray(assetIds) || assetIds.length === 0) {
+      return null;
+    }
+
+    const validAssetIds = assetIds.filter(Boolean);
+    if (validAssetIds.length === 0) {
+      return null;
+    }
+
+    const url = new URL(buildApiUrl('/api/completions/bulk'), window.location.origin);
+    url.searchParams.set('assets', validAssetIds.join(','));
+
+    const response = await fetch(url.toString(), {
+      headers: { accept: 'application/json' },
+      credentials: 'omit',
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data || !Array.isArray(data.results)) {
+      return null;
+    }
+
+    const resultMap = new Map();
+    data.results.forEach((item) => {
+      if (!item || (!item.assetId && !item.assetID && !item.assetid)) {
+        return;
+      }
+      const assetId = String(item.assetId || item.assetID || item.assetid);
+      resultMap.set(assetId, item);
+    });
+
+    return {
+      results: resultMap,
+      invalidAssets: Array.isArray(data.invalidAssets) ? data.invalidAssets : [],
+    };
   }
 
   function renderSnapshot(snapshot, { fromCache, alerts }) {
