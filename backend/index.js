@@ -2245,6 +2245,62 @@ app.get('/api/completions', async (req, res) => {
   }
 });
 
+app.get('/api/completions/bulk', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const assetsParam = req.query.assets;
+  if (!assetsParam) {
+    res.status(400).json({ error: 'missing_assets', message: 'assets query parameter is required' });
+    return;
+  }
+
+  const assetIds = String(assetsParam)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, all) => all.indexOf(value) === index);
+
+  if (assetIds.length === 0) {
+    res.status(400).json({ error: 'invalid_assets', message: 'assets query parameter must contain numeric IDs' });
+    return;
+  }
+
+  const validAssetIds = [];
+  const rejectedAssets = [];
+  assetIds.forEach((value) => {
+    if (/^\d+$/.test(String(value))) {
+      validAssetIds.push(Number(value));
+    } else {
+      rejectedAssets.push(value);
+    }
+  });
+
+  const completionPayloads = await Promise.all(validAssetIds.map(async (assetId) => {
+    try {
+      const payload = await getCompletionsForAsset(assetId);
+      return {
+        assetId: payload.assetId,
+        completions: payload.completions,
+        updatedAt: payload.updatedAt,
+        source: payload.source,
+        stale: Boolean(payload.stale),
+      };
+    } catch (error) {
+      return {
+        assetId,
+        error: 'unavailable',
+        message: error?.message || 'Unable to fetch completions for that asset.',
+      };
+    }
+  }));
+
+  const responseBody = { results: completionPayloads };
+  if (rejectedAssets.length > 0) {
+    responseBody.invalidAssets = rejectedAssets;
+  }
+
+  res.json(responseBody);
+});
+
 app.use((req, res) => {
   res.status(404).json({ error: 'not_found' });
 });
