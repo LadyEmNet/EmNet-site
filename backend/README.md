@@ -6,6 +6,7 @@ This directory contains a small Express service that proxies Algorand Indexer qu
 
 - `GET /api/ping` — health check that reports configuration basics.
 - `GET /api/entrants` — total entrant wallets with local state for application `3215540125`.
+- `GET /api/algoland/prizes` — weekly badge + draw prize ASA IDs pulled from the Algoland registry contract via the official SDK.
 - `GET /api/completions?asset=<assetId>` — unique receivers of positive badge transfers for a given ASA.
 - `GET /api/algoland-stats?address=<address>` — fetches decoded campaign progress for a wallet via the Algoland registry contract.
 
@@ -36,6 +37,7 @@ The service listens on `http://localhost:3000` by default. Configure the followi
 - `ALLOWED_ORIGINS` — comma-separated list of origins permitted to access the API. Example: `https://emnetcm.com,https://www.emnetcm.com`.
 - `INDEXER_BASE` — Algorand Indexer base URL. Defaults to `https://mainnet-idx.algonode.cloud`.
 - `CACHE_TTL_SECONDS` — overrides the default 300 second cache TTL.
+- `CHALLENGE_REFRESH_SECONDS` — refresh interval for on-chain challenge prize snapshots (default: 600 seconds).
 - `INDEXER_MAX_RETRIES` and `INDEXER_RETRY_BASE_MS` — adjust retry behaviour when the Indexer returns 429 or 5xx responses.
 
 ## Deployment on Render

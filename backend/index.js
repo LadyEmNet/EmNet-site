@@ -16,6 +16,7 @@ import { promisify } from 'node:util';
 import { Agent, setGlobalDispatcher } from 'undici';
 
 import { APP_ID, DISTRIBUTOR_ALLOWLIST, WEEK_CONFIG, getAllowlistForAsset } from './config.js';
+import { createChallengePrizeService } from './challengePrizeService.js';
 import { fetchWeeklyDrawData, resolveDrawAppId, normaliseError as normaliseDrawError } from './drawService.js';
 import { getAllPrizes, getPrizeForWeek } from './prizeStore.js';
 
@@ -252,6 +253,7 @@ const RETRY_BASE_DELAY_MS = Number.parseInt(process.env.INDEXER_RETRY_BASE_MS ||
 
 const algorandClient = AlgorandClient.mainNet();
 const algolandSdk = new AlgolandSDK({ appId: BigInt(APP_ID), algorand: algorandClient });
+const challengePrizeService = createChallengePrizeService({ sdk: algolandSdk });
 
 const RELATIVE_ID_KEYS = [
   'relativeid',
@@ -445,6 +447,8 @@ const weeklyDrawCache = new NodeCache({
 
 const MAX_HOLDER_CACHE_AGE_MS = Math.max(CACHE_TTL_SECONDS * 1000, 60 * 1000);
 const MAX_DRAW_CACHE_AGE_MS = Math.max(CACHE_TTL_SECONDS * 1000, 60 * 1000);
+
+challengePrizeService.start();
 
 let cachedDrawAppId = null;
 let drawAppIdPromise = null;
@@ -2007,6 +2011,37 @@ function buildDrawPayload(raw) {
   };
 }
 
+function formatChallengeWeek(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const week = Number.parseInt(raw.week, 10);
+  if (!Number.isFinite(week)) {
+    return null;
+  }
+  const response = {
+    week,
+    badgeAsa: raw.badgeAsa ?? null,
+    prizeAsa: raw.prizeAsa ?? null,
+    status: raw.status || null,
+  };
+  const timeStart = Number.parseInt(raw.timeStart, 10);
+  if (Number.isFinite(timeStart)) {
+    response.timeStart = timeStart;
+  }
+  const timeEnd = Number.parseInt(raw.timeEnd, 10);
+  if (Number.isFinite(timeEnd)) {
+    response.timeEnd = timeEnd;
+  }
+  if (raw.badgeMetadata) {
+    response.badgeMetadata = raw.badgeMetadata;
+  }
+  if (raw.prizeMetadata) {
+    response.prizeMetadata = raw.prizeMetadata;
+  }
+  return response;
+}
+
 function sendCachedOrError(res, error) {
   console.error('[Algoland API] Request failed', { message: error.message });
   res.status(502).json({
@@ -2044,6 +2079,34 @@ app.get('/api/entrants', async (req, res) => {
     res.json(responseBody);
   } catch (error) {
     sendCachedOrError(res, error);
+  }
+});
+
+app.get('/api/algoland/prizes', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const snapshot = await challengePrizeService.getSnapshot();
+    const weeks = Array.isArray(snapshot.weeks)
+      ? snapshot.weeks.map((week) => formatChallengeWeek(week)).filter(Boolean)
+      : [];
+
+    const responseBody = {
+      fetchedAt: snapshot.fetchedAt ?? null,
+      source: snapshot.source ?? 'algoland-sdk',
+      stale: Boolean(snapshot.stale),
+      weeks,
+    };
+    if (snapshot.error) {
+      responseBody.error = snapshot.error;
+    }
+
+    res.json(responseBody);
+  } catch (error) {
+    console.error('[Algoland API] Failed to load Algoland challenge prizes', { message: error.message });
+    res.status(502).json({
+      error: 'prize_config_unavailable',
+      message: 'Unable to load Algoland challenge configuration right now. Please try again shortly.',
+    });
   }
 });
 
