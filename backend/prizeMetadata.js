@@ -14,7 +14,8 @@ const PRIZE_METADATA = new Map([
     title:
       'Week 9 Algoland VRF prize minted by HHADCZKQV24QDCBER5GTOH7BOLF4ZQ6WICNHAA3GZUECIMJXIIMYBIWEZM',
   }],
-  ['3337766187', { image: null }],
+  ['3311114119', { image: 'Prize10.png' }],
+  ['3341903705', { image: 'Prize11.png' }],
 ]);
 
 function normaliseAssetId(value) {
