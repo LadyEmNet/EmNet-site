@@ -28,7 +28,7 @@
     { week: 10, assetId: '3337766186', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-11-24' },
     { week: 11, assetId: '3341903704', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-01' },
     { week: 12, assetId: '3355357872', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-08' },
-    { week: 13, assetId: '', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-15' },
+    { week: 13, assetId: '3367714062', distributors: [DEFAULT_DISTRIBUTOR], opensOn: '2025-12-15' },
   ];
 
   const numberFormatter = new Intl.NumberFormat('en-GB');
