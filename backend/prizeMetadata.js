@@ -16,6 +16,7 @@ const PRIZE_METADATA = new Map([
   }],
   ['3311114119', { image: 'Prize10.png' }],
   ['3341903705', { image: 'Prize11.png' }],
+  ['3367714062', { image: 'Prize12.JPG' }],
 ]);
 
 function normaliseAssetId(value) {
